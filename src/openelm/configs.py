@@ -21,7 +21,7 @@ class ModelConfig(BaseConfig):
     temp: float = 1.1
     gen_max_len: int = 512
     batch_size: int = 10
-    model_type: str = "hf"  # Can be "hf", "openai", etc
+    model_type: str = "bio_random"  # Can be "hf", "openai", etc
     model_path: str = MISSING  # Can be HF model name or path to local model
     logits_only: bool = False
     do_sample: bool = True
@@ -41,6 +41,11 @@ class PromptModelConfig(ModelConfig):
 class DiffModelConfig(ModelConfig):
     model_name: str = "diff"
     model_path: str = "CarperAI/diff-codegen-350m-v2"
+
+@dataclass
+class BioRandomModelConfig(ModelConfig):
+    model_name: str = "bio_random"
+    model_path: str = "bio_random" #todo
 
 
 @dataclass
@@ -148,6 +153,19 @@ class QDEnvConfig(EnvConfig):
         ]
     )
 
+@dataclass
+class QDBioRNAEnvConfig(EnvConfig):
+    env_name: str = "qd_bio_rna"
+    behavior_space: list[list[float]] = field(
+        default_factory=lambda: [
+            [0, 1],
+            [0, 1],
+        ]
+    )
+    sequence_length: int = 100
+    alphabet: list[str] = field(default_factory=lambda: ["A", "C", "G", "U"])
+    beta: float = 0.0  # Penalty term factor
+    bd_type: str = "nucleotides_frequencies" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred).
 
 @dataclass
 class PromptEnvConfig(EnvConfig):
@@ -157,9 +175,9 @@ class PromptEnvConfig(EnvConfig):
 
 
 defaults_elm = [
-    {"model": "prompt"},
+    {"model": "bio_random"},
     {"qd": "mapelites"},
-    {"env": "sodarace"},
+    {"env": "qd_bio_rna"},
     "_self_",
 ]
 
@@ -169,7 +187,7 @@ class ELMConfig(BaseConfig):
     hydra: Any = field(
         default_factory=lambda: {
             "run": {
-                "dir": "logs/elm/${hydra.job.override_dirname}/${now:%y-%m-%d_%H:%M}"
+                "dir": "logs/elm/${hydra.job.override_dirname}/${now:%y-%m-%d_%H-%M}"
             }
         }
     )
@@ -192,7 +210,7 @@ class P3Config(BaseConfig):
     hydra: Any = field(
         default_factory=lambda: {
             "run": {
-                "dir": "logs/p3/${hydra.job.override_dirname}/${now:%y-%m-%d_%H:%M}"
+                "dir": "logs/p3/${hydra.job.override_dirname}/${now:%y-%m-%d_%H-%M}"
             }
         }
     )
@@ -227,10 +245,12 @@ def register_configstore() -> ConfigStore:
     cs.store(group="env", name="p3_problem", node=P3ProblemEnvConfig)
     cs.store(group="env", name="prompt_evolution", node=PromptEnvConfig)
     cs.store(group="env", name="qdaif", node=QDEnvConfig)
+    cs.store(group="env", name="qd_bio_rna", node=QDBioRNAEnvConfig)
     cs.store(group="qd", name="mapelites", node=MAPElitesConfig)
     cs.store(group="qd", name="cvtmapelites", node=CVTMAPElitesConfig)
     cs.store(group="model", name="prompt", node=PromptModelConfig)
     cs.store(group="model", name="diff", node=DiffModelConfig)
+    cs.store(group="model", name="bio_random", node=BioRandomModelConfig)
     cs.store(name="elmconfig", node=ELMConfig)
     cs.store(name="p3config", node=P3Config)
     return cs

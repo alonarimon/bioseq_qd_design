@@ -20,6 +20,7 @@ from openelm.utils.diff_eval import apply_diff, split_diff
 
 
 def get_model(config: ModelConfig):
+    print(f"Loading model {config.model_type}")
     if config.model_type == "hf":
         return HuggingFaceLLM(config=config)
     elif config.model_type == "openai":
@@ -35,6 +36,8 @@ def get_model(config: ModelConfig):
             return ChatOpenAI(**cfg)
         else:
             return OpenAI(**cfg)
+    elif config.model_type == "bio_random":
+        return RandomSequenceMutator(config=config) #todo ?
     else:
         raise NotImplementedError
 
@@ -247,3 +250,28 @@ class HuggingFaceLLM(LLM):
                 generations_dict[prompt].extend(generations[slice_start:slice_end])
 
         return LLMResult(generations=list(generations_dict.values()))
+
+class RandomSequenceMutator(MutationModel): #todo : use?
+    """
+    A simple random sequence mutator for bioseq generation. (without llms)
+    """
+    def __init__(self, config, alphabet: str = "ACGT"):
+        super().__init__()
+        self.config = config
+        self.alphabet = alphabet
+        self.rng = np.random.default_rng()
+        self.sequence_length = 10
+
+    def mutate(self, sequence: str) -> str:
+        """
+        Mutate a given sequence by randomly changing one of its characters.
+        """
+        index = self.rng.integers(0, len(sequence))
+        new_char = self.rng.choice(list(self.alphabet))
+        return sequence[:index] + new_char + sequence[index + 1:]
+
+    def generate_programs(self, sequences: list[str], **kwargs) -> list[str]:
+        """
+        Generate new sequences by mutating the input sequences.
+        """
+        return [self.mutate(seq) for seq in sequences]

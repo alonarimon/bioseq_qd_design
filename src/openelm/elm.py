@@ -2,8 +2,8 @@ from typing import Any, Optional, Type
 
 from hydra.core.hydra_config import HydraConfig
 
-from openelm.configs import DiffModelConfig, ELMConfig, PromptModelConfig
-from openelm.mutation_model import DiffModel, MutationModel, PromptModel
+from openelm.configs import DiffModelConfig, ELMConfig, PromptModelConfig, BioRandomModelConfig
+from openelm.mutation_model import DiffModel, MutationModel, PromptModel, RandomSequenceMutator
 from openelm.environments.base import BaseEnvironment
 
 
@@ -40,6 +40,10 @@ def load_env(env_name: str) -> Type[BaseEnvironment]:
         from openelm.environments.poetry import PoetryEvolution
 
         return PoetryEvolution
+    elif env_name == "qd_bio_rna":
+        from openelm.environments.bioSeq import RNAEvolution
+
+        return RNAEvolution
     else:
         raise ValueError(f"Unknown environment {env_name}")
 
@@ -78,6 +82,9 @@ class ELM:
         elif isinstance(self.config.model, DiffModelConfig):
             print("Diff model")
             self.mutation_model = DiffModel(self.config.model)
+        elif isinstance(self.config.model, BioRandomModelConfig):
+            print("BioRandom model")
+            self.mutation_model = RandomSequenceMutator(self.config.model)
         if env is None:
             self.environment = load_env(env_name)(
                 config=self.config.env,
