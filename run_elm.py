@@ -21,6 +21,7 @@ from openelm import ELM
     version_base="1.2",
 )
 def main(config):
+    print(config)
     config.output_dir = HydraConfig.get().runtime.output_dir
     print("----------------- Config ---------------")
     print(OmegaConf.to_yaml(config))
