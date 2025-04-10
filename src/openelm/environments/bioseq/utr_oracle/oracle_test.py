@@ -1,3 +1,5 @@
+import os
+
 from design_bench.disk_resource import DiskResource
 from design_bench.datasets.discrete_dataset import DiscreteDataset
 from design_bench.oracles.tensorflow import ResNetOracle
@@ -5,9 +7,14 @@ from sklearn.metrics import mean_squared_error
 from scipy.stats import spearmanr, pearsonr
 import numpy as np
 
+ORACLE_NAME = "resnet_k5_normalized_minmax_and_z"
+
+oracle_data_path = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr\oracle_data"
+oracle_data_path = os.path.join(oracle_data_path, ORACLE_NAME)
+
 # Load validation split
-val_x = [DiskResource(r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr\oracle_data\resnet_normalized0_split-val-x-0.npy")]
-val_y = [DiskResource(r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr\oracle_data\resnet_normalized0_split-val-y-0.npy")]
+val_x = [DiskResource(os.path.join(oracle_data_path, "split-val-x-0.npy"))]
+val_y = [DiskResource(os.path.join(oracle_data_path, "split-val-y-0.npy"))]
 val_dataset = DiscreteDataset(val_x, val_y, num_classes=4)
 
 print("Validation dataset shape:", val_dataset.x.shape)  # (19999, 50)
@@ -15,13 +22,15 @@ print("Validation dataset y shape:", val_dataset.y.shape)  # (19999, 1)
 print("Validation dataset x:", val_dataset.x[:5])
 print("Validation dataset y:", val_dataset.y[:5])
 
+oracle_model_path = os.path.join(oracle_data_path, "oracle")
+
 # Load the saved oracle (fit=False ensures it loads from disk)
 oracle = ResNetOracle(
     val_dataset,
     noise_std=0.0,
-    fit=False,  # <- important: do not retrain
-    is_absolute=False,
-    disk_target="utr/oracle_resnet_v0_normalized"
+    fit=False,  # do not retrain
+    is_absolute=True,
+    disk_target=oracle_model_path
 
 )
 

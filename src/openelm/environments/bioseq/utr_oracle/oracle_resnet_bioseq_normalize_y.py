@@ -1,3 +1,5 @@
+import os
+
 from design_bench.datasets.discrete.utr_dataset import UTRDataset
 from design_bench.disk_resource import DiskResource
 from design_bench.datasets.discrete_dataset import DiscreteDataset
@@ -15,11 +17,7 @@ dataset.relabel(
     is_absolute=False
 )
 
-# # reload normalized dataset
-# x_shards = [DiskResource("utr/oracle_data-x-0.npy")]
-# y_shards = [DiskResource("utr/oracle_data-y-0.npy")]
-#
-# normalized_dataset = DiscreteDataset(x_shards, y_shards)
+ORACLE_NAME = "resnet_k8_normalized_minmax_and_z"
 
 # train resnet oracle on normalized dataset
 oracle = ResNetOracle(
@@ -32,7 +30,7 @@ oracle = ResNetOracle(
     min_percentile=0,
     fit=True,
     is_absolute=False,
-    disk_target="utr/oracle_resnet_v0_normalized",
+    disk_target=os.path.join("utr/oracle_data", ORACLE_NAME, "oracle"),
     model_kwargs=dict(
         hidden_size=120,
         num_blocks=2,
@@ -47,7 +45,7 @@ oracle = ResNetOracle(
                           subset=None,
                           shard_size=280000,
                           to_disk=True,
-                          disk_target='utr/oracle_data/resnet_normalized0_split',
+                          disk_target=os.path.join("utr/oracle_data", ORACLE_NAME, "split"),
                           is_absolute=False))
 
 
