@@ -1,21 +1,32 @@
 import json
+import os
 from typing import Optional, Callable
 
 import numpy as np
+import torch
 from langchain.schema import HumanMessage
 
 from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig
 from openelm.environments.base import BaseEnvironment
+from openelm.environments.bioseq.utr_fitness_function.fitness_model import FitnessScoringEnsemble
 from openelm.environments.prompt.prompt import PromptGenotype
 from openelm.mutation_model import MutationModel, get_model
+from openelm.environments.bioseq.utr_fitness_function.scoring_model import ScoringNetwork  # import the class from Step 1
+
+MAP_INT_TO_LETTER = {
+    0: "A",
+    1: "C",
+    2: "G",
+    3: "U",
+} # todo: check if this is correct
 
 
-class RNAGenotype():
+class RNAGenotype:
     """
     A simple genotype class for RNA bioseq generation. (without llms)
     """
 
-    def __init__(self, sequence: str):
+    def __init__(self, sequence: list[int]):
         self.sequence = sequence
 
     def __str__(self):
@@ -25,16 +36,17 @@ class RNAGenotype():
         """
         Calculate the frequencies of nucleotides in a sequence.
         :param x: RNAGenotype
-        :return: numpy array with frequencies of A, C, G
+        :return: numpy array with frequencies of the nucleotides 0, 1, 2
         """
         freq = np.zeros(3, dtype=float)
         for letter in self.sequence:
-            if letter == "A":
+            if letter == 0:
                 freq[0] += 1
-            elif letter == "C":
+            elif letter == 1:
                 freq[1] += 1
-            elif letter == "G":
+            elif letter == 2:
                 freq[2] += 1
+        # Normalize frequencies
         freq /= len(self.sequence)
         return freq
 
@@ -49,19 +61,11 @@ class RNAGenotype():
         else:
             raise ValueError(f"Unknown bd_type: {bd_type}. Supported: nucleotides_frequencies")
 
-
-class RNASolution():
-    """
-    A simple solution class for RNA bioseq generation. (without llms)
-    """
-    def __init__(self, genotype: RNAGenotype):
-        self.genotype = genotype
-        self.fitness_score = None
-        self.behavioral_descriptor = None
-
     def __str__(self):
-        return self.genotype.__str__()
-
+        """
+        Convert the genotype to a string representation.
+        """
+        return "".join([MAP_INT_TO_LETTER[letter] for letter in self.sequence])
 
 def trivial_scoring_function(genotype: RNAGenotype) -> float:
     """
@@ -82,6 +86,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
             config (QDEnvConfig): Configuration for the environment.
             mutation_model (MutationModel): Mutation model for mutating sequences.
         """
+        print(f"Initializing RNAEvolution environment with config: {config}")
         self.config = config
         self.mutation_model = get_model(mutation_model.config)
         self.batch_size = config.batch_size
@@ -91,12 +96,22 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         self.alphabet = config.alphabet
         self.rng = np.random.default_rng(config.seed)
 
-        self.scoring_functions = [trivial_scoring_function]
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"Using device: {self.device}")
+        self.fitness_function = FitnessScoringEnsemble(self.sequence_length,
+                                                        len(self.alphabet),
+                                                        config.scoring_model_path,
+                                                        self.device,
+                                                        config.fitness_ensemble_size,
+                                                        config.beta)
+
         # self.reference_set = reference_set #todo: for similarity-based bd
         # self.projection_matrix = #todo: for similarity-based bd
         self.beta = config.beta # penalty term factor (in the fitness function)
         self.bd_type = config.bd_type # behavioral descriptor type (e.g. 'nucleotides_frequencies')
         # todo: here they originally had 'del mutation_model'. see if it is needed (and if it does - delete it outside the constructor)
+
+
 
     def get_rng_state(self) -> Optional[np.random.Generator]:
         return self.rng
@@ -104,16 +119,19 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
     def set_rng_state(self, rng_state: Optional[np.random.Generator]):
         self.rng = rng_state
 
-    def _random_seq(self) -> str:
-        return ''.join(self.rng.choice(self.alphabet, self.sequence_length))
+    def _random_seq(self) -> list[int]:
+        seq = [self.rng.choice(self.alphabet) for _ in range(self.sequence_length)]
+        return seq
 
-    def _mutate_seq(self, seq: str) -> str:
+    def _mutate_seq(self, seq: list[int]) -> list[int]:
         """
-        Mutate a sequence by randomly changing one character.
+        Mutate a sequence by randomly changing one letter.
         """
         i = self.rng.integers(self.sequence_length)
-        new_char = self.rng.choice([a for a in self.alphabet if a != seq[i]])
-        return seq[:i] + new_char + seq[i + 1:]
+        new_letter = self.rng.choice([a for a in self.alphabet if a != seq[i]])
+        mutated_seq = seq.copy()
+        mutated_seq[i] = new_letter
+        return mutated_seq
 
     def random(self) -> list[RNAGenotype]:
         """
@@ -134,35 +152,5 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         :param x: RNAGenotype
         :return: fitness score (float)
         """
-        scores = [f(x) for f in self.scoring_functions]
-        mean = np.mean(scores)
-        std = np.std(scores)
-        return mean - self.beta * std
-
-    def _nucleotides_frequencies(self, x: RNAGenotype) -> np.ndarray:
-        """
-        Calculate the frequencies of nucleotides in a sequence.
-        :param x: RNAGenotype
-        :return: numpy array with frequencies of A, C, G
-        """ #todo: delete from here?
-        freq = np.zeros(3, dtype=float)
-        for letter in x.sequence:
-            if letter == "A":
-                freq[0] += 1
-            elif letter == "C":
-                freq[1] += 1
-            elif letter == "G":
-                freq[2] += 1
-        freq /= len(x.sequence)
-        return freq
-
-    def to_phenotype(self, genotype: RNAGenotype) -> Optional[np.ndarray]:
-        """ #todo: delete from here?
-        Convert sequence to a phenotype representation (behavioral descriptor) according to the specified type.
-        :param genotype: RNAGenotype
-        return: np.ndarray with dtype float
-        """
-        if self.bd_type == "nucleotides_frequencies":
-            return self._nucleotides_frequencies(genotype)
-        else:
-            raise ValueError(f"Unknown bd_type: {self.bd_type}. Supported: nucleotides_frequencies")
+        fitness, mean, std = self.fitness_function(x.sequence)
+        return fitness

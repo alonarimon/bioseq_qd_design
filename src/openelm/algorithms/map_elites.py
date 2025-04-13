@@ -373,7 +373,7 @@ class MAPElitesBase:
                 # Initialise by generating initsteps random solutions.
                 # If map is still empty: force to do generation instead of mutation.
                 # TODO: use a separate sampler, move batch size to qd config.
-                new_individuals: list[Genotype] = self.env.random()
+                new_individuals: list[Genotype] = self.env.random() # todo: initialization from one-shot?
             else:
                 # Randomly select a batch of elites from the map.
                 batch: list[Genotype] = []
@@ -396,7 +396,7 @@ class MAPElitesBase:
             max_genome, max_fitness = self.update_map(
                 new_individuals, max_genome, max_fitness
             )
-            tbar.set_description(f"{max_fitness=:.4f}")
+            tbar.set_description(f"{float(max_fitness)=:.4f}")
 
             self.fitness_history["max"].append(self.max_fitness())
             self.fitness_history["min"].append(self.min_fitness())

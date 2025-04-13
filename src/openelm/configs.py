@@ -50,11 +50,11 @@ class BioRandomModelConfig(ModelConfig):
 
 @dataclass
 class QDConfig(BaseConfig):
-    init_steps: int = 250
-    total_steps: int = 2500
+    init_steps: int = 3 #250
+    total_steps: int = 10 # 2500
     history_length: int = 1
     save_history: bool = False
-    save_snapshot_interval: int = 10
+    save_snapshot_interval: int = 1 #10
     log_snapshot_dir: str = ""
     seed: Optional[int] = 42
     save_np_rng_state: bool = False
@@ -162,10 +162,12 @@ class QDBioRNAEnvConfig(EnvConfig):
             [0, 1],
         ]
     )
-    sequence_length: int = 100
-    alphabet: list[str] = field(default_factory=lambda: ["A", "C", "G", "U"])
-    beta: float = 0.0  # Penalty term factor
+    sequence_length: int = 50
+    alphabet: list[int] = field(default_factory=lambda: [0, 1, 2, 3]) # todo: inteperation
+    beta: float = 0.0  # Penalty term factor #todo: 2.0
     bd_type: str = "nucleotides_frequencies" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred).
+    fitness_ensemble_size: int = 2 # Number of scoring models to use for fitness evaluation
+    scoring_model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\src\openelm\environments\bioseq\utr_fitness_function\scoring_models"  # Path to the scoring model #todo: not absolute path
 
 @dataclass
 class PromptEnvConfig(EnvConfig):
