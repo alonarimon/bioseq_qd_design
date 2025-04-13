@@ -53,6 +53,7 @@ def main(
         print(f"\n=== Training scoring model #{i+1}/{L} ===")
 
         # (A) instantiate the model
+        torch.manual_seed(i + 1234)  # for reproducibility
         model = ScoringNetwork(seq_len, K).to(device)
 
         # (B) create trainer with or without COM
@@ -89,18 +90,15 @@ def main(
                 # update learning stats
                 learning_stats["train/mse"].append(stats["train/mse"])
                 learning_stats["train/rank_corr"].append(stats["train/rank_corr"])
-                learning_stats["train/overestimation"].append(stats["train/overestimation"])
-                learning_stats["train/alpha"].append(stats["train/alpha"])
+                if "train/overestimation" in stats:
+                    learning_stats["train/overestimation"].append(stats["train/overestimation"])
+                if "train/alpha" in stats:
+                    learning_stats["train/alpha"].append(stats["train/alpha"])
 
-                epoch_bar.set_postfix({
-                    "MSE": epoch_stats["mse"][-1],
-                    "RankCorr": epoch_stats["rank_corr"][-1]})
-
-            # display average stats
-            print(f"Epoch {epoch+1:02d}/{epochs} - "
-                  f"MSE={np.mean(epoch_stats['mse']):.4f}, "
-                  f"RankCorr={np.mean(epoch_stats['rank_corr']):.4f}")
-
+            epoch_bar.set_postfix({
+                "mse": np.mean(epoch_stats["mse"]),
+                "rank_corr": np.mean(epoch_stats["rank_corr"]),
+            })
 
         # (D) save model
         model_name = f"scoring_model_{i}.pt"
@@ -124,7 +122,8 @@ if __name__ == "__main__":
     parser.add_argument("--L", type=int, default=18)
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--batch-size", type=int, default=128)
-    parser.add_argument("--use-conservative", action="store_true")
+    parser.add_argument("--use-conservative", action="store_true", default=True,
+                        help="Use conservative COM training")
     args = parser.parse_args()
 
     main(

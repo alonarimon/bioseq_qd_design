@@ -26,5 +26,5 @@ class ScoringNetwork(nn.Module):
         if log_x.dim() == 3:
             # flatten
             B, seq_len, new_K = log_x.shape
-            log_x = log_x.view(B, seq_len * new_K)
+            log_x = log_x.reshape(B, seq_len * new_K)
         return self.net(log_x).squeeze(-1)  # shape: (B,)

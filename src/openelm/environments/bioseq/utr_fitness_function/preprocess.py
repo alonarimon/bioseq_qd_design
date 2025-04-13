@@ -48,21 +48,4 @@ def load_sampled_data(data_dir:str):
     sampled_y = np.load(os.path.join(data_dir, "sampled_y.npy"))
     return sampled_x, sampled_y
 
-def preprocess_and_save_npz(int_sequences, out_file):
-    """
-    Preprocess the integer sequences and save them as a compressed npz file.
-    @param int_sequences: Integer sequences to be preprocessed. shape (N, seq_len)
-    @param out_file: Output file path for the compressed npz file.
-    """
-    # shape: (N, seq_len, 4) after one-hot
-    one_hot = sequence_nuc_to_one_hot(torch.tensor(int_sequences))
-    # shape: (N, seq_len, 3) after log interpolation
-    log_encoded = log_interpolated_one_hot(one_hot).numpy()
-    # Save
-    np.savez_compressed(out_file, X=log_encoded)
-    print(f"Saved preprocessed data to {out_file}")
 
-
-def load_preprocessed_npz(in_file):
-    data = np.load(in_file)
-    return data["X"]  # shape: (N, seq_len, 3)
