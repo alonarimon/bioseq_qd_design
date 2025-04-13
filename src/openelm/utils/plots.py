@@ -9,11 +9,12 @@ def plot_learning_curves(
         save_dir: str,
         model_id: int,
         title: str = "Learning Curve",
-        x_label: str = "Epochs",
+        x_label: str = "Minibatch",
         y_label: str = "Score",
         legend_loc: str = "upper right",
         show_legend: bool = True,
         save_fig: bool = True,
+        fig_name: str = "learning_curve",
 ):
     """
     Plot the learning curve from the learning stats.
@@ -27,6 +28,7 @@ def plot_learning_curves(
         legend_loc (str): Location of the legend.
         show_legend (bool): Whether to show the legend.
         save_fig (bool): Whether to save the figure.
+        fig_name (str): Name of the figure file.
     """
     plt.figure(figsize=(10, 6))
     for key, values in learning_stats.items():
@@ -37,5 +39,6 @@ def plot_learning_curves(
     if show_legend:
         plt.legend(loc=legend_loc)
     if save_fig:
-        plt.savefig(os.path.join(save_dir, f"learning_curve_{model_id}.png"))
+        os.makedirs(save_dir, exist_ok=True)
+        plt.savefig(os.path.join(save_dir, f"{fig_name}_{model_id}.png"))
     plt.show()
