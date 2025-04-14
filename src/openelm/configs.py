@@ -20,7 +20,7 @@ class ModelConfig(BaseConfig):
     top_p: float = 0.95
     temp: float = 1.1
     gen_max_len: int = 512
-    batch_size: int = 10
+    batch_size: int = 128
     model_type: str = "bio_random"  # Can be "hf", "openai", etc
     model_path: str = MISSING  # Can be HF model name or path to local model
     logits_only: bool = False
@@ -50,7 +50,7 @@ class BioRandomModelConfig(ModelConfig):
 
 @dataclass
 class QDConfig(BaseConfig):
-    init_steps: int = 3 #250
+    init_steps: int = 1 #250
     total_steps: int = 10 # 2500
     history_length: int = 1
     save_history: bool = False
@@ -82,7 +82,7 @@ class EnvConfig(BaseConfig):
     sandbox: bool = False
     sandbox_server: str = "http://localhost:5000"
     processes: int = 1
-    batch_size: int = 10  # Batch size of MAP-Elites
+    batch_size: int = 128  # Batch size of MAP-Elites
     env_name: str = MISSING
     debug: bool = False
     seed: Optional[int] = 42
@@ -164,10 +164,13 @@ class QDBioRNAEnvConfig(EnvConfig):
     )
     sequence_length: int = 50
     alphabet: list[int] = field(default_factory=lambda: [0, 1, 2, 3]) # todo: inteperation
-    beta: float = 0.0  # Penalty term factor #todo: 2.0
+    beta: float = 2.0  # Penalty term factor #todo: 2.0
     bd_type: str = "nucleotides_frequencies" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred).
-    fitness_ensemble_size: int = 2 # Number of scoring models to use for fitness evaluation
+    fitness_ensemble_size: int = 3 # Number of scoring models to use for fitness evaluation
     scoring_model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\src\openelm\environments\bioseq\utr_fitness_function\scoring_models"  # Path to the scoring model #todo: not absolute path
+    offline_data_dir: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr\sampled_data_fraction_1_3_seed_42"  # Path to the offline data directory #todo: not absolute path
+    offline_data_x_file: str = "sampled_x.npy"  # Name of the offline data X file
+    offline_data_y_file: str = "sampled_y.npy"  # Name of the offline data Y file
 
 @dataclass
 class PromptEnvConfig(EnvConfig):

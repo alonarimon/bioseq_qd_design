@@ -76,6 +76,10 @@ class BaseEnvironment(ABC, Generic[GenoType]):
     def set_rng_state(self, rng_state: Optional[np.random._generator.Generator]):
         raise NotImplementedError
 
+    def initial_sequences(self) -> list[GenoType]:
+        """Generate initial sequences."""
+        return self.random()
+
     @abstractmethod
     def random(self) -> list[GenoType]:
         raise NotImplementedError

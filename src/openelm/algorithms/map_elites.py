@@ -373,7 +373,8 @@ class MAPElitesBase:
                 # Initialise by generating initsteps random solutions.
                 # If map is still empty: force to do generation instead of mutation.
                 # TODO: use a separate sampler, move batch size to qd config.
-                new_individuals: list[Genotype] = self.env.random() # todo: initialization from one-shot?
+                new_individuals: list[Genotype] = self.env.initial_sequences()
+
             else:
                 # Randomly select a batch of elites from the map.
                 batch: list[Genotype] = []

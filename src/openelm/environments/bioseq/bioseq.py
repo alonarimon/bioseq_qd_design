@@ -95,6 +95,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         self.sequence_length = config.sequence_length
         self.alphabet = config.alphabet
         self.rng = np.random.default_rng(config.seed)
+        self.offline_data_dir = config.offline_data_dir
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"Using device: {self.device}")
@@ -119,6 +120,17 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
     def set_rng_state(self, rng_state: Optional[np.random.Generator]):
         self.rng = rng_state
 
+    def initial_sequences(self) -> list[RNAGenotype]:
+        """
+        Generate a batch of initial sequences by randomly sample from the offline data.
+        @return: list of RNAGenotype
+        """ #todo: when comparing between methods, this should be the same seeds all the time
+        offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
+        random_indexes = self.rng.choice(offline_data_x.shape[0], size=self.batch_size, replace=False)
+        initial_sequences = offline_data_x[random_indexes]
+        initial_genotypes = [RNAGenotype(seq) for seq in initial_sequences]
+        return initial_genotypes
+
     def _random_seq(self) -> list[int]:
         seq = [self.rng.choice(self.alphabet) for _ in range(self.sequence_length)]
         return seq
@@ -126,7 +138,8 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
     def _mutate_seq(self, seq: list[int]) -> list[int]:
         """
         Mutate a sequence by randomly changing one letter.
-        """
+        """ #todo: 1. change to use mutation model
+        # todo: 2. the 50 steps limitation from the paper should be implemented here
         i = self.rng.integers(self.sequence_length)
         new_letter = self.rng.choice([a for a in self.alphabet if a != seq[i]])
         mutated_seq = seq.copy()
