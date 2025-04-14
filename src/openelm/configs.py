@@ -50,11 +50,11 @@ class BioRandomModelConfig(ModelConfig):
 
 @dataclass
 class QDConfig(BaseConfig):
-    init_steps: int = 1 #250
-    total_steps: int = 10 # 2500
+    init_steps: int = 1 
+    total_steps: int =  100000
     history_length: int = 1
     save_history: bool = False
-    save_snapshot_interval: int = 1 #10
+    save_snapshot_interval: int = 2000
     log_snapshot_dir: str = ""
     seed: Optional[int] = 42
     save_np_rng_state: bool = False
@@ -72,7 +72,7 @@ class MAPElitesConfig(QDConfig):
 @dataclass
 class CVTMAPElitesConfig(QDConfig):
     qd_name: str = "cvtmapelites"
-    n_niches: int = 12
+    n_niches: int = 2000
     cvt_samples: int = 10000
 
 
@@ -160,6 +160,7 @@ class QDBioRNAEnvConfig(EnvConfig):
         default_factory=lambda: [
             [0, 1],
             [0, 1],
+            [0, 1],
         ]
     )
     sequence_length: int = 50
@@ -181,7 +182,7 @@ class PromptEnvConfig(EnvConfig):
 
 defaults_elm = [
     {"model": "bio_random"},
-    {"qd": "mapelites"},
+    {"qd": "cvtmapelites"},
     {"env": "qd_bio_rna"},
     "_self_",
 ]
