@@ -7,15 +7,15 @@ from sklearn.metrics import mean_squared_error
 from scipy.stats import spearmanr, pearsonr
 import numpy as np
 
-ORACLE_NAME = "original_v0"
+ORACLE_NAME = "resnet_k8_normalized_minmax_and_z_2"
 
 dataset_path = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr"
 oracle_data_path = os.path.join(dataset_path, "oracle_data")
 oracle_data_path = os.path.join(oracle_data_path, ORACLE_NAME)
 
 # Load validation split
-val_x = [DiskResource(os.path.join(oracle_data_path, "resnet_split-val-x-0.npy"))]
-val_y = [DiskResource(os.path.join(oracle_data_path, "resnet_split-val-y-0.npy"))]
+val_x = [DiskResource(os.path.join(oracle_data_path, "split-val-x-0.npy"))]
+val_y = [DiskResource(os.path.join(oracle_data_path, "split-val-y-0.npy"))]
 val_dataset = DiscreteDataset(val_x, val_y, num_classes=4)
 
 print("Validation dataset shape:", val_dataset.x.shape)  # (19999, 50)

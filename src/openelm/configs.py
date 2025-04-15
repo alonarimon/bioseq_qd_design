@@ -168,7 +168,7 @@ class QDBioRNAEnvConfig(EnvConfig):
     beta: float = 2.0  # Penalty term factor #todo: 2.0
     bd_type: str = "nucleotides_frequencies" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred).
     fitness_ensemble_size: int = 3 # Number of scoring models to use for fitness evaluation
-    scoring_model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\src\openelm\environments\bioseq\utr_fitness_function\scoring_models"  # Path to the scoring model #todo: not absolute path
+    scoring_model_path: str = r"/openelm/environments/bioseq/utr_fitness_function/scoring_models_old"  # Path to the scoring model #todo: not absolute path
     offline_data_dir: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr\sampled_data_fraction_1_3_seed_42"  # Path to the offline data directory #todo: not absolute path
     offline_data_x_file: str = "sampled_x.npy"  # Name of the offline data X file
     offline_data_y_file: str = "sampled_y.npy"  # Name of the offline data Y file

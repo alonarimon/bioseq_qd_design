@@ -41,4 +41,4 @@ def plot_learning_curves(
     if save_fig:
         os.makedirs(save_dir, exist_ok=True)
         plt.savefig(os.path.join(save_dir, f"{fig_name}_{model_id}.png"))
-    plt.show()
+    # plt.show()

@@ -106,8 +106,8 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
                                                         config.fitness_ensemble_size,
                                                         config.beta)
 
-        # self.reference_set = reference_set #todo: for similarity-based bd
-        # self.projection_matrix = #todo: for similarity-based bd
+        # self.reference_set = reference_set # todo: for similarity-based bd
+        # self.projection_matrix = # todo: for similarity-based bd
         self.beta = config.beta # penalty term factor (in the fitness function)
         self.bd_type = config.bd_type # behavioral descriptor type (e.g. 'nucleotides_frequencies')
         # todo: here they originally had 'del mutation_model'. see if it is needed (and if it does - delete it outside the constructor)
@@ -138,6 +138,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
     def _mutate_seq(self, seq: list[int]) -> list[int]:
         """
         Mutate a sequence by randomly changing one letter.
+        :param seq: sequence to mutate
         """ #todo: 1. change to use mutation model
         # todo: 2. the 50 steps limitation from the paper should be implemented here
         i = self.rng.integers(self.sequence_length)

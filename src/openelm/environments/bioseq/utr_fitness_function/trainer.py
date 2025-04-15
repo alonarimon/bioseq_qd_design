@@ -52,6 +52,7 @@ class COMTrainer:
 
     def __init__(self,
                  model: ScoringNetwork,
+                 device: torch.device,
                  lr: float = 3e-4,
                  alpha_init: float = 1.0,
                  alpha_lr: float = 1e-2,
@@ -60,8 +61,8 @@ class COMTrainer:
                  particle_lr: float = 0.05,
                  entropy_coeff: float = 0.9,
                  noise_std: float = 0.0,
-                 use_conservative: bool = True,
-                 device: str = "cuda"):
+                 use_conservative: bool = True
+                 ):
         """
         Args:
             model: PyTorch scoring model
