@@ -20,10 +20,10 @@ class UTRLogDataset(Dataset):
             # sanity check - make sure the data loaded is the same as the one passed
             assert self.data_x.shape == (len(int_sequences), int_sequences[0].shape[0], 4 - 1)
             assert self.data_y.shape == (len(float_scores),)
-            print("loaded y[0:5]:", self.data_y[0:5])
-            print("loaded x[0:5]:", self.data_x[0:5])
-            print("given y[0:5]:", float_scores[0:5])
-            print("given x[0:5]:", int_sequences[0:5])
+            print("loaded y[0:1]:", self.data_y[0:1])
+            print("loaded x[0:1]:", self.data_x[0:1])
+            print("given y[0:1]:", float_scores[0:1])
+            print("given x[0:1]:", int_sequences[0:1])
 
 
         else:

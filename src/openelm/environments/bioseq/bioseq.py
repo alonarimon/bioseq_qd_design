@@ -29,9 +29,6 @@ class RNAGenotype:
     def __init__(self, sequence: list[int]):
         self.sequence = sequence
 
-    def __str__(self):
-        return self.sequence
-
     def _nucleotides_frequencies(self) -> np.ndarray:
         """
         Calculate the frequencies of nucleotides in a sequence.

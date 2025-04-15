@@ -53,15 +53,15 @@ class COMTrainer:
     def __init__(self,
                  model: ScoringNetwork,
                  device: torch.device,
-                 lr: float = 3e-4,
-                 alpha_init: float = 1.0,
-                 alpha_lr: float = 1e-2,
-                 overestimation_limit: float = 0.5,
-                 particle_steps: int = 50,
-                 particle_lr: float = 0.05,
-                 entropy_coeff: float = 0.9,
-                 noise_std: float = 0.0,
-                 use_conservative: bool = True
+                 lr: float,
+                 alpha_init: float,
+                 alpha_lr: float,
+                 overestimation_limit: float,
+                 particle_steps: int,
+                 particle_lr: float,
+                 entropy_coeff: float,
+                 noise_std: float,
+                 use_conservative: bool
                  ):
         """
         Args:
@@ -108,15 +108,8 @@ class COMTrainer:
         pred_pos = self.model(x_batch)  # shape (B,)
         mse_loss = nn.functional.mse_loss(pred_pos, y_batch)
 
-        # gather stats
-        with torch.no_grad():
-            # rank correlation optional
-            # e.g. spearmanr => returns correlation, pvalue
-            corr, _ = spearmanr(pred_pos.cpu().numpy(), y_batch.cpu().numpy())
-
         stats = {
             "train/mse": mse_loss.item(),
-            "train/rank_corr": float(corr),
         }
 
         # If not using conservative objective, just do an MSE step
@@ -160,68 +153,4 @@ class COMTrainer:
 
         return stats
 
-def train_scoring_function(
-    x_npy_path: str,
-    y_npy_path: str,
-    seq_len: int,
-    K: int,
-    use_conservative: bool = True,
-    device: str = "cuda"
-):
-    # 1) Load data
-    X = np.load(x_npy_path)  # shape (N, seq_len) or (N, seq_len, K) if onehot
-    Y = np.load(y_npy_path)  # shape (N,)
-    # If Y is shape (N,1), flatten:
-    if Y.ndim == 2:
-        Y = Y[:, 0]
 
-    # 2) Construct DataLoader
-    dataset = TensorDataset(
-        torch.tensor(X, dtype=torch.float32),
-        torch.tensor(Y, dtype=torch.float32)
-    )
-    loader = DataLoader(dataset, batch_size=128, shuffle=True)
-
-    # 3) Build model and trainer
-    model = ScoringNetwork(seq_len, K)
-    trainer = COMTrainer(
-        model=model,
-        lr=3e-4,
-        alpha_init=0.1,
-        alpha_lr=1e-2,
-        overestimation_limit=0.5,
-        particle_steps=50,
-        particle_lr=0.05,
-        entropy_coeff=0.0,  # or 0.9 if you prefer
-        noise_std=0.0,
-        use_conservative=use_conservative,
-        device=device
-    )
-
-    # 4) Train
-    for epoch in range(50):
-        epoch_stats = {"train/mse": [], "train/rank_corr": [],
-                       "train/overestimation": [], "train/alpha": []}
-        for x_batch, y_batch in loader:
-            stats = trainer.train_step(x_batch, y_batch)
-            for k, v in stats.items():
-                if k in epoch_stats:
-                    epoch_stats[k].append(v)
-
-        # log epoch summary
-        print(f"Epoch {epoch+1}: ", end="")
-        for k, arr in epoch_stats.items():
-            if arr:  # non-empty
-                print(f"{k}={np.mean(arr):.4f}  ", end="")
-        print()
-
-    # 5) Return final model
-    return model
-
-if __name__ == '__main__':
-    # Example usage
-    x_npy_path = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr\sampled_data_fraction_1_3_seed_42\sampled_x.npy"
-    y_npy_path = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr\sampled_data_fraction_1_3_seed_42\sampled_y.npy"
-    seq_len = 50
-    K = 4
-    model = train_scoring_function(x_npy_path, y_npy_path, seq_len, K)

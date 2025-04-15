@@ -7,7 +7,7 @@ from openelm.environments.bioseq.utr_fitness_function.scoring_model import Scori
 from openelm.environments.bioseq.utr_fitness_function.preprocess import sequence_nuc_to_one_hot, log_interpolated_one_hot
 
 
-def load_scoring_ensemble(seq_len, K, model_dir, device="cpu", ensemble_size=1):
+def load_scoring_ensemble(seq_len, K, model_dir, device="cuda", ensemble_size=1):
     """
     Loads all .pt (or .pth) models from `model_dir` into a list.
     """
@@ -32,7 +32,7 @@ class FitnessScoringEnsemble:
     """
     A wrapper class for a scoring ensemble that allows for batch processing of sequences.
     """
-    def __init__(self, seq_len, K, model_dir, device="cpu", ensemble_size=1, beta=0.0):
+    def __init__(self, seq_len, K, model_dir, device="cuda", ensemble_size=1, beta=0.0):
         """
         Initializes the scoring ensemble.
         :param seq_len: Length of the sequences.

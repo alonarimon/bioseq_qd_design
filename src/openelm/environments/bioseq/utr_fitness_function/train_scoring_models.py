@@ -16,16 +16,16 @@ DEFAULT_X_PATH = os.path.join(DEFAULT_OFFLINE_DATA_PATH, "x.npy")
 DEFAULT_Y_PATH = os.path.join(DEFAULT_OFFLINE_DATA_PATH, "y.npy")
 
 def main(
-    data_x_path: str = DEFAULT_X_PATH,
-    data_y_path: str = DEFAULT_Y_PATH,
-    save_dir: str = "./scoring_models",
-    seq_len: int = 50,
-    K: int = 4,
-    L: int = 18,
-    use_conservative: bool = True,
-    device: str = "cuda",
-    epochs: int = 50,
-    batch_size: int = 128
+    data_x_path: str,
+    data_y_path: str,
+    save_dir: str,
+    seq_len: int,
+    K: int,
+    L: int,
+    use_conservative: bool,
+    device: str,
+    epochs: int,
+    batch_size: int
 ):
     """Trains L scoring models and saves them to disk."""
 
@@ -50,7 +50,7 @@ def main(
     os.makedirs(save_dir, exist_ok=True)
 
     # 2) Train L scoring models
-    for i in range(2, L):
+    for i in range(2, L): # todo: change to range(L)
         print(f"\n=== Training scoring model #{i+1}/{L} ===")
 
         # (A) instantiate the model
@@ -74,53 +74,45 @@ def main(
 
         learning_stats = {
             "train/mse": [],
-            "train/rank_corr": [],
             "train/overestimation": [],
             "train/alpha": []
         }
         all_epochs_stats = {
             "mse": [],
-            "rank_corr": [],
             "overestimation": [],
             "alpha": []
         }
 
         # (C) train
         for epoch in range(epochs):
-            epoch_bar = tqdm(total=len(loader), desc=f"Epoch {epoch + 1}/{epochs}", leave=False)
-            epoch_stats = {"mse": [], "rank_corr": [], "overestimation": [], "alpha": []}
+            epoch_stats = {"mse": [], "overestimation": [], "alpha": []}
             for x_batch, y_batch in loader:
                 stats = trainer.train_step(x_batch, y_batch)
 
                 # update epoch stats
                 epoch_stats["mse"].append(stats["train/mse"])
-                epoch_stats["rank_corr"].append(stats["train/rank_corr"])
                 if "train/overestimation" in stats:
                     epoch_stats["overestimation"].append(stats["train/overestimation"])
                 if "train/alpha" in stats:
                     epoch_stats["alpha"].append(stats["train/alpha"])
                 # update learning stats
                 learning_stats["train/mse"].append(stats["train/mse"])
-                learning_stats["train/rank_corr"].append(stats["train/rank_corr"])
                 if "train/overestimation" in stats:
                     learning_stats["train/overestimation"].append(stats["train/overestimation"])
                 if "train/alpha" in stats:
                     learning_stats["train/alpha"].append(stats["train/alpha"])
 
-                epoch_bar.update(1)
 
             epoch_stats = {k: np.mean(v) for k, v in epoch_stats.items()}
 
             all_epochs_stats["mse"].append(epoch_stats["mse"])
-            all_epochs_stats["rank_corr"].append(epoch_stats["rank_corr"])
             if "overestimation" in epoch_stats:
                 all_epochs_stats["overestimation"].append(epoch_stats["overestimation"])
             if "alpha" in epoch_stats:
                 all_epochs_stats["alpha"].append(epoch_stats["alpha"])
 
 
-            print(f"Epoch {epoch + 1}: mse={epoch_stats['mse']:.4f}, "
-                  f"rank_corr={epoch_stats['rank_corr']:.4f}")
+            print(f"Epoch {epoch + 1}: mse={epoch_stats['mse']:.4f}")
 
 
         # (D) save model
@@ -130,6 +122,7 @@ def main(
         # (E) save learning stats
         logs_dir = os.path.join(save_dir, "logs_model_{}".format(i))
         learning_stats_name = f"learning_stats_{i}.npz"
+        os.makedirs(logs_dir, exist_ok=True)
         np.savez(os.path.join(logs_dir, learning_stats_name), **learning_stats)
         plot_learning_curves(learning_stats, logs_dir, i)
         plot_learning_curves(all_epochs_stats, logs_dir, i,
@@ -173,19 +166,6 @@ def main(
                                 y_label="Score",
                                 legend_loc="upper left",
                                 show_legend=True, save_fig=True, fig_name="learning_curve_minibatch_mse")
-        # plot only rank correlation
-        plot_learning_curves({'rank_corr': all_epochs_stats['rank_corr']}, logs_dir, i,
-                                title="Learning Curve (Epochs)",
-                                x_label="Epoch",
-                                y_label="Score",
-                                legend_loc="upper left",
-                                show_legend=True, save_fig=True, fig_name="learning_curve_epochs_rank_corr")
-        plot_learning_curves({'rank_corr': learning_stats['train/rank_corr']}, logs_dir, i,
-                                title="Learning Curve (Minibatch)",
-                                x_label="Minibatch",
-                                y_label="Score",
-                                legend_loc="upper left",
-                                show_legend=True, save_fig=True, fig_name="learning_curve_minibatch_rank_corr")
 
 
 
@@ -213,5 +193,6 @@ if __name__ == "__main__":
         L=args.L,
         use_conservative=args.use_conservative,
         epochs=args.epochs,
-        batch_size=args.batch_size
+        batch_size=args.batch_size,
+        device="cuda"
     )
