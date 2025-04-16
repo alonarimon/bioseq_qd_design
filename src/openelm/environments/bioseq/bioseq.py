@@ -1,10 +1,8 @@
-import json
 import os
-from typing import Optional, Callable
+from typing import Optional
 
 import numpy as np
 import torch
-from langchain.schema import HumanMessage
 from rapidfuzz.distance import Levenshtein
 
 from design_bench.datasets.discrete_dataset import DiscreteDataset
@@ -13,9 +11,7 @@ from design_bench.oracles.tensorflow import ResNetOracle
 from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig
 from openelm.environments.base import BaseEnvironment
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import FitnessScoringEnsemble
-from openelm.environments.prompt.prompt import PromptGenotype
 from openelm.mutation_model import MutationModel, get_model
-from openelm.environments.bioseq.utr_fitness_function.scoring_model import ScoringNetwork  # import the class from Step 1
 
 MAP_INT_TO_LETTER = {
     0: "A",
@@ -84,9 +80,10 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
             config (QDEnvConfig): Configuration for the environment.
             mutation_model (MutationModel): Mutation model for mutating sequences.
         """
+        super().__init__() #todo: check if this is needed
         print(f"Initializing RNAEvolution environment with config: {config}")
         self.config = config
-        self.mutation_model = get_model(mutation_model.config)
+        self.mutation_model = get_model(mutation_model.config) #todo: not in use
         self.batch_size = config.batch_size
         self.genotype_space = np.array(
             self.config.behavior_space).T  # todo: i think it should be renamed to behavior_space (in the base class)
@@ -105,10 +102,14 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
                                                         config.fitness_ensemble_size,
                                                         config.beta)
 
-        # self.reference_set = reference_set # todo: for similarity-based bd
         # self.projection_matrix = # todo: for similarity-based bd
         self.beta = config.beta # penalty term factor (in the fitness function)
         self.bd_type = config.bd_type # behavioral descriptor type (e.g. 'nucleotides_frequencies')
+        if self.config.normalize_bd:
+            self.bd_min, self.bd_max = self.get_training_bd_stats()  # Get the min and max values for the behavioral descriptor space
+        else:
+            self.bd_min = 0
+            self.bd_max = 1
         self.oracle = self._load_oracle()  # Load the oracle model from disk, for final evaluation on the solutions (not used in the optimization process)
         # todo: here they originally had 'del mutation_model'. see if it is needed (and if it does - delete it outside the constructor)
 
@@ -116,8 +117,6 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
     def _load_oracle(self):
         """
         Load the oracle model from disk.
-        :param dataset_path: Path to the dataset directory.
-        :param oracle_name: Name of the oracle model.
         :return: Loaded oracle model.
         """
         # Load validation split
@@ -149,12 +148,12 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         :return: tuple of min and max values for the behavioral descriptor space.
         """
         offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
-        offline_data_genotypes = [RNAGenotype(seq) for seq in offline_data_x]
+        offline_data_genotypes = [RNAGenotype(seq, 0, 1) for seq in offline_data_x]
         # Calculate the behavioral descriptor for each genotype
         bd_values = np.array([genotype.to_phenotype(self.bd_type) for genotype in offline_data_genotypes])
         # Calculate the min and max values for each behavioral descriptor, for all dimensions
-        min_bd = np.min(bd_values)
-        max_bd = np.max(bd_values)
+        min_bd = np.min(bd_values, axis=0)
+        max_bd = np.max(bd_values, axis=0)
 
         return min_bd, max_bd
 
@@ -172,7 +171,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
         random_indexes = self.rng.choice(offline_data_x.shape[0], size=self.batch_size, replace=False)
         initial_sequences = offline_data_x[random_indexes]
-        initial_genotypes = [RNAGenotype(seq) for seq in initial_sequences]
+        initial_genotypes = [RNAGenotype(seq, min_bd=self.bd_min, max_bd=self.bd_max) for seq in initial_sequences]
         return initial_genotypes
 
     def _load_ref_set(self) -> list[RNAGenotype]:
@@ -184,7 +183,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
         random_indexes = self.rng.choice(offline_data_x.shape[0], size=self.config.size_of_refs_collection, replace=False)
         reference_set = offline_data_x[random_indexes]
-        reference_set = [RNAGenotype(seq) for seq in reference_set]
+        reference_set = [RNAGenotype(seq,  min_bd=0, max_bd=1) for seq in reference_set]
         return reference_set
 
     def _random_seq(self) -> list[int]:
@@ -207,13 +206,13 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         """
         Generate a batch of random genotypes.
         """
-        return [RNAGenotype(self._random_seq()) for _ in range(self.batch_size)]
+        return [RNAGenotype(self._random_seq(), min_bd=self.bd_min, max_bd=self.bd_max) for _ in range(self.batch_size)]
 
     def mutate(self, genomes: list[RNAGenotype]) -> list[RNAGenotype]:
         """
         Mutate a list of genomes by applying the mutation function to each genome.
         """
-        return [RNAGenotype(self._mutate_seq(g.sequence)) for g in genomes] #todo: change to use mutation model
+        return [RNAGenotype(self._mutate_seq(g.sequence), min_bd=self.bd_min, max_bd=self.bd_max) for g in genomes] #todo: change to use mutation model
 
     def fitness(self, x: RNAGenotype) -> float:
         """

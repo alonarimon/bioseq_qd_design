@@ -176,6 +176,7 @@ class QDBioRNAEnvConfig(EnvConfig):
     offline_data_x_file: str = "x.npy"  # Name of the offline data X file
     offline_data_y_file: str = "y.npy"  # Name of the offline data Y file
     oracle_model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr\oracle_data\original_v0_minmax_orig"  # Path to the oracle model #todo: not absolute path
+    normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
 
 @dataclass
 class PromptEnvConfig(EnvConfig):
