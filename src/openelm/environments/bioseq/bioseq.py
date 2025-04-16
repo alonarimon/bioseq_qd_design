@@ -5,7 +5,11 @@ from typing import Optional, Callable
 import numpy as np
 import torch
 from langchain.schema import HumanMessage
+from rapidfuzz.distance import Levenshtein
 
+from design_bench.datasets.discrete_dataset import DiscreteDataset
+from design_bench.disk_resource import DiskResource
+from design_bench.oracles.tensorflow import ResNetOracle
 from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig
 from openelm.environments.base import BaseEnvironment
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import FitnessScoringEnsemble
@@ -26,13 +30,14 @@ class RNAGenotype:
     A simple genotype class for RNA bioseq generation. (without llms)
     """
 
-    def __init__(self, sequence: list[int]):
+    def __init__(self, sequence: list[int], min_bd: float, max_bd: float):
         self.sequence = sequence
+        self.min_bd = min_bd
+        self.max_bd = max_bd
 
     def _nucleotides_frequencies(self) -> np.ndarray:
         """
         Calculate the frequencies of nucleotides in a sequence.
-        :param x: RNAGenotype
         :return: numpy array with frequencies of the nucleotides 0, 1, 2
         """
         freq = np.zeros(3, dtype=float)
@@ -45,6 +50,9 @@ class RNAGenotype:
                 freq[2] += 1
         # Normalize frequencies
         freq /= len(self.sequence)
+        # normalize according to the min and max values and clip to [0, 1]
+        freq = (freq - self.min_bd) / (self.max_bd - self.min_bd)
+        freq = np.clip(freq, 0, 1)
         return freq
 
     def to_phenotype(self, bd_type = "nucleotides_frequencies") -> Optional[np.ndarray]:
@@ -63,13 +71,6 @@ class RNAGenotype:
         Convert the genotype to a string representation.
         """
         return "".join([MAP_INT_TO_LETTER[letter] for letter in self.sequence])
-
-def trivial_scoring_function(genotype: RNAGenotype) -> float:
-    """
-    A trivial scoring function that returns a random score.
-    This is just a placeholder and should be replaced with a real scoring function.
-    """
-    return np.random.rand()
 
 
 class RNAEvolution(BaseEnvironment[RNAGenotype]):
@@ -93,6 +94,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         self.alphabet = config.alphabet
         self.rng = np.random.default_rng(config.seed)
         self.offline_data_dir = config.offline_data_dir
+        self.reference_set = self._load_ref_set()
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"Using device: {self.device}")
@@ -107,9 +109,54 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         # self.projection_matrix = # todo: for similarity-based bd
         self.beta = config.beta # penalty term factor (in the fitness function)
         self.bd_type = config.bd_type # behavioral descriptor type (e.g. 'nucleotides_frequencies')
+        self.oracle = self._load_oracle()  # Load the oracle model from disk, for final evaluation on the solutions (not used in the optimization process)
         # todo: here they originally had 'del mutation_model'. see if it is needed (and if it does - delete it outside the constructor)
 
 
+    def _load_oracle(self):
+        """
+        Load the oracle model from disk.
+        :param dataset_path: Path to the dataset directory.
+        :param oracle_name: Name of the oracle model.
+        :return: Loaded oracle model.
+        """
+        # Load validation split
+        val_x = [DiskResource(os.path.join(self.config.oracle_model_path, 'oracle_train_split', "split-val-x-0.npy"))]
+        val_y = [DiskResource(os.path.join(self.config.oracle_model_path, 'oracle_train_split', "split-val-y-0.npy"))]
+        val_dataset = DiscreteDataset(val_x, val_y, num_classes=4)
+        oracle_model_path = os.path.join(self.config.oracle_model_path, "oracle")
+
+        # Load the saved oracle (fit=False ensures it loads from disk)
+        oracle = ResNetOracle(
+            val_dataset,
+            noise_std=0.0,
+            fit=False,  # do not retrain
+            is_absolute=True,
+            disk_target=oracle_model_path
+
+        )
+
+        print("Oracle params:\n",
+              "rank_correlation:", oracle.params["rank_correlation"],
+              "\nmodel_kwargs:", oracle.params["model_kwargs"],
+              "\nsplit_kwargs:", oracle.params["split_kwargs"])
+
+        return oracle
+
+    def get_training_bd_stats(self) -> tuple:
+        """
+        Get the training behavioral descriptor statistics.
+        :return: tuple of min and max values for the behavioral descriptor space.
+        """
+        offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
+        offline_data_genotypes = [RNAGenotype(seq) for seq in offline_data_x]
+        # Calculate the behavioral descriptor for each genotype
+        bd_values = np.array([genotype.to_phenotype(self.bd_type) for genotype in offline_data_genotypes])
+        # Calculate the min and max values for each behavioral descriptor, for all dimensions
+        min_bd = np.min(bd_values)
+        max_bd = np.max(bd_values)
+
+        return min_bd, max_bd
 
     def get_rng_state(self) -> Optional[np.random.Generator]:
         return self.rng
@@ -127,6 +174,18 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         initial_sequences = offline_data_x[random_indexes]
         initial_genotypes = [RNAGenotype(seq) for seq in initial_sequences]
         return initial_genotypes
+
+    def _load_ref_set(self) -> list[RNAGenotype]:
+        """
+        Load the reference set from the offline data directory.
+        :return: list of RNAGenotype
+        """
+        # Load the reference set from the offline data directory
+        offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
+        random_indexes = self.rng.choice(offline_data_x.shape[0], size=self.config.size_of_refs_collection, replace=False)
+        reference_set = offline_data_x[random_indexes]
+        reference_set = [RNAGenotype(seq) for seq in reference_set]
+        return reference_set
 
     def _random_seq(self) -> list[int]:
         seq = [self.rng.choice(self.alphabet) for _ in range(self.sequence_length)]
@@ -165,3 +224,32 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         """
         fitness, mean, std = self.fitness_function(x.sequence)
         return fitness
+
+    def eval_with_oracle(self, genotypes=list[RNAGenotype]) -> tuple:
+        """
+        Evaluate a list of genotypes using the oracle model.
+        The oracle model is used to evaluate the solutions after the optimization process.
+        (not used in the optimization process)
+        :param genotypes: list of RNAGenotype
+        :return: max, diversity, mean, and novelty scores for the solutions.
+        """
+        N = len(genotypes)
+        sequences = [genotype.sequence for genotype in genotypes]
+        print(f"Evaluating {N} solutions...")
+
+        list_of_solutions_np = np.array(sequences)
+
+        # Evaluate the solutions using the oracle model
+        scores = self.oracle.predict(list_of_solutions_np)
+
+        # Calculate max, diversity, mean, and novelty scores
+        max_score = float(max(scores))
+        diversity_score = 1 / (N * (N - 1)) * sum(
+            [sum([Levenshtein.distance(s1, s2) for s2 in sequences]) for s1 in sequences]
+        )
+        diversity_score = float(diversity_score)
+        mean_score = float(sum(scores) / N)
+        novelty_score = sum([min([Levenshtein.distance(s, ref.sequence) for ref in self.reference_set]) for s in sequences]) / N
+
+        return max_score, diversity_score, mean_score, novelty_score
+

@@ -92,6 +92,13 @@ class BaseEnvironment(ABC, Generic[GenoType]):
     def fitness(self, x: GenoType) -> float:
         raise NotImplementedError
 
+    @abstractmethod
+    def eval_with_oracle(self, genotypes = list[GenoType]) -> list[float]:
+        """
+        Evaluate the fitness of a list of genotypes using an oracle.
+        """
+        raise NotImplementedError("Oracle evaluation is not implemented for this environment.")
+
     @property
     def max_fitness(self) -> int:
         return 0
@@ -104,6 +111,8 @@ class BaseEnvironment(ABC, Generic[GenoType]):
     @property
     def behavior_ndim(self) -> int:
         return self.behavior_space.shape[1]
+
+
 
 
 class ArrayGenotype(Genotype, np.ndarray):

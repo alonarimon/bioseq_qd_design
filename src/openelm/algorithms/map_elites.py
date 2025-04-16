@@ -403,6 +403,7 @@ class MAPElitesBase:
             self.fitness_history["min"].append(self.min_fitness())
             self.fitness_history["mean"].append(self.mean_fitness())
             self.fitness_history["qd_score"].append(self.qd_score())
+            self.fitness_history["niches_filled"].append(self.niches_filled())
 
             if (
                 self.save_snapshot_interval is not None
@@ -527,6 +528,22 @@ class MAPElitesBase:
             json.dump(tmp_config, f)
         f.close()
 
+        if self.config.eval_with_oracle_on_snapshot:
+            non_zero_genomes = self.genomes.array[self.nonzero.array]
+            max_score, diversity_score, mean_score, novelty_score = self.env.eval_with_oracle(non_zero_genomes)
+            results = {
+                "oracle_scores": {
+                    "max_score": max_score,
+                    "diversity_score": diversity_score,
+                    "mean_score": mean_score,
+                    "novelty_score": novelty_score,
+                },
+            }
+            with open((output_folder / "oracle_scores.json"), "w") as f:
+                json.dump(results, f)
+            f.close()
+
+   
     def plot_fitness(self):
         import matplotlib.pyplot as plt
 
@@ -536,18 +553,27 @@ class MAPElitesBase:
         plt.plot(self.fitness_history["mean"], label="Mean fitness")
         plt.plot(self.fitness_history["min"], label="Min fitness")
         plt.legend()
+        plt.xlabel("Iteration")
+        plt.ylabel("Fitness")
+        plt.title("Fitness history")
         plt.savefig(f"{save_path}/MAPElites_fitness_history.png")
         plt.close("all")
 
         plt.figure()
         plt.plot(self.fitness_history["qd_score"], label="QD score")
         plt.legend()
+        plt.xlabel("Iteration")
+        plt.ylabel("QD score")
+        plt.title("QD score history")
         plt.savefig(f"{save_path}/MAPElites_qd_score.png")
         plt.close("all")
 
         plt.figure()
         plt.plot(self.fitness_history["niches_filled"], label="Niches filled")
         plt.legend()
+        plt.xlabel("Iteration")
+        plt.ylabel("Niches filled")
+        plt.title("Niches filled history")
         plt.savefig(f"{save_path}/MAPElites_niches_filled.png")
         plt.close("all")
 
