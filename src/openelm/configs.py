@@ -172,10 +172,10 @@ class QDBioRNAEnvConfig(EnvConfig):
     size_of_refs_collection: int =  16384 # Number of reference sequences to use for novelty evaluation and BD
 
     scoring_model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\src\openelm\environments\bioseq\utr_fitness_function\scoring_models"  # Path to the scoring model #todo: not absolute path
-    offline_data_dir: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42"  # Path to the offline data directory #todo: not absolute path
+    offline_data_dir: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42"  # Path to the offline data directory #todo: not absolute path
     offline_data_x_file: str = "x.npy"  # Name of the offline data X file
     offline_data_y_file: str = "y.npy"  # Name of the offline data Y file
-    oracle_model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr\oracle_data\original_v0_minmax_orig"  # Path to the oracle model #todo: not absolute path
+    oracle_model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig"  # Path to the oracle model #todo: not absolute path
     normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
 
 @dataclass

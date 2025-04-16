@@ -1,3 +1,4 @@
-[submodule "design-bench_forked"]
-	path = design-bench_forked
-	url = https://github.com/alonarimon/design-bench_forked
+
+[submodule "design-bench-detached"]
+	path = design-bench-detached
+	url = https://github.com/alonarimon/design-bench-detached
