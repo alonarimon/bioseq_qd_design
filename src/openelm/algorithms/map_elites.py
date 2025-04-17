@@ -410,10 +410,12 @@ class MAPElitesBase:
                 and n_steps != 0
                 and n_steps % self.save_snapshot_interval == 0
             ):
-                self.save_results(step=n_steps)
+                self.save_results(step=n_steps,
+                                  eval_with_oracle=(self.config.eval_with_oracle_on_snapshot and
+                                                    n_steps % self.config.eval_with_oracle_interval == 0))
 
         self.current_max_genome = max_genome
-        self.save_results(step=n_steps)
+        self.save_results(step=n_steps, eval_with_oracle=self.config.eval_with_oracle_on_snapshot)
         self.visualize()
         return str(max_genome)
 
@@ -489,7 +491,7 @@ class MAPElitesBase:
         """
         return self.fitnesses.qd_score
 
-    def save_results(self, step: int):
+    def save_results(self, step: int, eval_with_oracle: bool = False):
         # create folder for dumping results and metadata
         output_folder = Path(self.config.output_dir) / f"step_{step}"
         os.makedirs(output_folder, exist_ok=True)
@@ -528,15 +530,23 @@ class MAPElitesBase:
             json.dump(tmp_config, f)
         f.close()
 
-        if self.config.eval_with_oracle_on_snapshot:
+        if eval_with_oracle:
             non_zero_genomes = self.genomes.array[self.nonzero.array]
-            max_score, diversity_score, mean_score, novelty_score = self.env.eval_with_oracle(non_zero_genomes)
+            max_score_all, diversity_score_all, mean_score_all, novelty_score_all, \
+                max_score_top_k, diversity_score_top_k, mean_score_top_k, novelty_score_top_k = (
+                self.env.eval_with_oracle(non_zero_genomes, k=self.config.number_of_final_solutions))
             results = {
-                "oracle_scores": {
-                    "max_score": max_score,
-                    "diversity_score": diversity_score,
-                    "mean_score": mean_score,
-                    "novelty_score": novelty_score,
+                "oracle_scores_all":{
+                    "max_score": max_score_all,
+                    "diversity_score": diversity_score_all,
+                    "mean_score": mean_score_all,
+                    "novelty_score": novelty_score_all,
+                },
+                "oracle_scores_top_k":{
+                    "max_score": max_score_top_k,
+                    "diversity_score": diversity_score_top_k,
+                    "mean_score": mean_score_top_k,
+                    "novelty_score": novelty_score_top_k,
                 },
             }
             with open((output_folder / "oracle_scores.json"), "w") as f:

@@ -13,7 +13,7 @@ from design_bench.oracles.tensorflow import ResNetOracle
 from openelm.environments.bioseq.bioseq import RNAGenotype
 
 ORACLE_NAME = "original_v0_minmax_orig"
-DATASET_PATH = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr"
+DATASET_PATH = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench-detached\design_bench_data\utr"
 
 
 def evaluate_final_solutions(list_of_solutions, oracle_model, ref_solutions=None):
@@ -30,7 +30,7 @@ def evaluate_final_solutions(list_of_solutions, oracle_model, ref_solutions=None
     list_of_solutions_np = np.array(list_of_solutions)
 
     # Evaluate the solutions using the oracle model
-    scores = oracle_model.predict(list_of_solutions_np)
+    scores = oracle_model.predict(list_of_solutions_np).flatten() #todo: use gpu for evaluation, and add top_k
 
     # Calculate max, diversity, mean, and novelty scores
     max_score = float(max(scores))
@@ -80,8 +80,8 @@ def loaf_ref_list(x_data_path, size_to_sample):
 
 if __name__ == '__main__':
     # load maps from pkl file
-    exp_logs_dir = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\logs\elm\25-04-15_19-05\step_99999"
-    maps_pkl_file = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\logs\elm\25-04-15_19-05\step_99999\maps.pkl"
+    exp_logs_dir = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\logs\elm\25-04-16_15-09\step_19999"
+    maps_pkl_file = os.path.join(exp_logs_dir, "maps.pkl")
     with open(maps_pkl_file, "rb") as f:
         maps = pickle.load(f)
     genomes = maps["genomes"]
@@ -91,16 +91,23 @@ if __name__ == '__main__':
     # load oracle model
     oracle = load_oracle(DATASET_PATH, ORACLE_NAME)
 
-    offline_data_path_x = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42"
+    offline_data_path_x = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42"
     ref_list = loaf_ref_list(os.path.join(offline_data_path_x, "x.npy"), 16384)
 
     # evaluate the genomes
     max_score, diversity_score, mean_score, novelty_score, scores = evaluate_final_solutions(non_zero_seq, oracle, ref_list)
     print(f"Max score: {max_score}, Diversity score: {diversity_score}, Mean score: {mean_score}, Novelty score: {novelty_score}")
-    print(f"Scores: {scores}")
     max_score_sequence = non_zero_seq[np.argmax(scores)]
-    max_rna = RNAGenotype(max_score_sequence)
+    max_rna = RNAGenotype(max_score_sequence, 0, 1)
     print(f"Max score sequence (RNA): {max_rna}")
+
+    # evaluate top 128 sequences (w.r.t. oracle)
+    top_128_indexes = np.argsort(scores)[-128:].tolist()
+    top_128_sequences = [non_zero_seq[i] for i in top_128_indexes]
+    top_128_scores = [scores[i] for i in top_128_indexes]
+    max_score_top, diversity_score_top, mean_score_top, novelty_score_top, scores_top = evaluate_final_solutions(top_128_sequences, oracle, ref_list)
+    print(f"Top 128 Max score: {max_score_top}, Diversity score: {diversity_score_top}, Mean score: {mean_score_top}, Novelty score: {novelty_score_top}")
+
     # save results
     results = {
         "max_score": max_score,
@@ -108,6 +115,10 @@ if __name__ == '__main__':
         "mean_score": mean_score,
         "novelty_score": novelty_score,
         "max_score_sequence": str(max_rna),
+        "max_score_top": max_score_top,
+        "diversity_score_top": diversity_score_top,
+        "mean_score_top": mean_score_top,
+        "novelty_score_top": novelty_score_top
     }
     results_file_path = os.path.join(exp_logs_dir, "oracle_evaluation_all.json")
     with open(results_file_path, "w") as f:

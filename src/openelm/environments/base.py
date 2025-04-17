@@ -93,9 +93,12 @@ class BaseEnvironment(ABC, Generic[GenoType]):
         raise NotImplementedError
 
     @abstractmethod
-    def eval_with_oracle(self, genotypes = list[GenoType]) -> list[float]:
+    def eval_with_oracle(self, genotypes = list[GenoType], k=128) -> list[float]:
         """
         Evaluate the fitness of a list of genotypes using an oracle.
+        :param genotypes: List of genotypes to evaluate.
+        :param k: The number of top genotypes to consider. (w.r.t. oracle fitness)
+        :return: List of fitness scores for the genotypes.
         """
         raise NotImplementedError("Oracle evaluation is not implemented for this environment.")
 

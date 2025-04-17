@@ -62,6 +62,8 @@ class QDConfig(BaseConfig):
     crossover: bool = False
     crossover_parents: int = 2
     eval_with_oracle_on_snapshot: bool = True
+    number_of_final_solutions: int = 128
+    eval_with_oracle_interval : int = 5 # evaluation with oracle is usually slow, so recommend to do it not often
 
 
 @dataclass

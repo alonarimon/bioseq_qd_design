@@ -12,6 +12,7 @@ from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig
 from openelm.environments.base import BaseEnvironment
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import FitnessScoringEnsemble
 from openelm.mutation_model import MutationModel, get_model
+from openelm.utils.evaluation import evaluate_solutions_set
 
 MAP_INT_TO_LETTER = {
     0: "A",
@@ -224,31 +225,32 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         fitness, mean, std = self.fitness_function(x.sequence)
         return fitness
 
-    def eval_with_oracle(self, genotypes=list[RNAGenotype]) -> tuple:
+    def eval_with_oracle(self, genotypes=list[RNAGenotype], k=128) -> tuple:
         """
         Evaluate a list of genotypes using the oracle model.
         The oracle model is used to evaluate the solutions after the optimization process.
         (not used in the optimization process)
         :param genotypes: list of RNAGenotype
-        :return: max, diversity, mean, and novelty scores for the solutions.
+        :param k: number of top solutions to consider for evaluation (w.r.t. the oracle scores)
+        :return: max, diversity, mean, and novelty scores for all solutions, and for the top k solutions.
         """
         N = len(genotypes)
         sequences = [genotype.sequence for genotype in genotypes]
-        print(f"Evaluating {N} solutions...")
-
+        refs = [genotype.sequence for genotype in self.reference_set]
         list_of_solutions_np = np.array(sequences)
 
         # Evaluate the solutions using the oracle model
-        scores = self.oracle.predict(list_of_solutions_np)
+        scores = self.oracle.predict(list_of_solutions_np).flatten()
 
-        # Calculate max, diversity, mean, and novelty scores
-        max_score = float(max(scores))
-        diversity_score = 1 / (N * (N - 1)) * sum(
-            [sum([Levenshtein.distance(s1, s2) for s2 in sequences]) for s1 in sequences]
-        )
-        diversity_score = float(diversity_score)
-        mean_score = float(sum(scores) / N)
-        novelty_score = sum([min([Levenshtein.distance(s, ref.sequence) for ref in self.reference_set]) for s in sequences]) / N
+        # calculate scores for all solutions
+        max_all, diversity_all, mean_all, novelty_all = evaluate_solutions_set(sequences, refs, scores)
+        # calculate scores for the top k solutions
+        k = min(k, N)
+        top_k_indexes = np.argsort(scores)[-k:].tolist()
+        top_k_solutions = [sequences[i] for i in top_k_indexes]
+        top_k_scores = [scores[i] for i in top_k_indexes]
+        max_score_top_k, diversity_top_k, mean_top_k, novelty_top_k = evaluate_solutions_set(top_k_solutions, refs, top_k_scores)
 
-        return max_score, diversity_score, mean_score, novelty_score
+        return (max_all, diversity_all, mean_all, novelty_all,
+                max_score_top_k, diversity_top_k, mean_top_k, novelty_top_k)
 
