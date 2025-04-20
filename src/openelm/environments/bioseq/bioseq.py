@@ -96,6 +96,12 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"Using device: {self.device}")
+        # set all random seeds for reproducibility
+        torch.manual_seed(config.seed)
+        np.random.seed(config.seed)
+
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(config.seed)
         
         self.fitness_function = get_model(config.fitness_model_config)
 
@@ -168,6 +174,8 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         random_indexes = self.rng.choice(offline_data_x.shape[0], size=self.batch_size, replace=False)
         initial_sequences = offline_data_x[random_indexes]
         initial_genotypes = [RNAGenotype(seq, min_bd=self.bd_min, max_bd=self.bd_max) for seq in initial_sequences]
+        print("Initial sequences[:5]:\n", [str(s) for s in initial_genotypes[:5]])
+        print("index of initial sequences:\n", random_indexes[:5])
         return initial_genotypes
 
     def _load_ref_set(self) -> list[RNAGenotype]:
