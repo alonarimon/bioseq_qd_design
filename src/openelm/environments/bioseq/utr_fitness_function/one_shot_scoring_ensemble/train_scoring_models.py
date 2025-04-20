@@ -2,11 +2,10 @@
 import os
 import numpy as np
 import torch
-from tqdm import tqdm
 
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 
-from openelm.environments.bioseq.utr_fitness_function.utr_log_dataset import UTRLogDataset
+from openelm.environments.bioseq.utr_fitness_function.one_shot_scoring_ensemble.utr_log_dataset import UTRLogDataset
 from scoring_model import ScoringNetwork
 from trainer import COMTrainer
 from openelm.utils.plots import plot_learning_curves

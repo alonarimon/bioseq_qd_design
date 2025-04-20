@@ -51,7 +51,7 @@ class BioRandomModelConfig(ModelConfig):
 class FitnessBioEnsembleConfig(ModelConfig):
     model_type: str = "bio_ensemble"  # Can be "hf", "openai", etc
     model_name: str = "fitness_bio_ensemble"
-    model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\src\openelm\environments\bioseq\utr_fitness_function\scoring_models"  # Path to the scoring model #todo: not absolute path
+    model_path: str = r"/openelm/environments/bioseq/utr_fitness_function/one_shot_scoring_ensemble/scoring_models"  # Path to the scoring model #todo: not absolute path
     ensemble_size: int = 4 # Number of scoring models to use for fitness evaluation #todo: 18
     beta: float = 2.0  # Penalty term factor
     alphabet_size: int = 4 # Size of the alphabet (e.g., 4 for nucleotides ACGU)

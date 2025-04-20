@@ -39,7 +39,7 @@ def get_model(config: ModelConfig): #todo: move from this file
     elif config.model_type == "bio_random":
         return RandomSequenceMutator(config=config) #todo ?
     elif config.model_type == "bio_ensemble":
-        from openelm.environments.bioseq.utr_fitness_function.fitness_scoring_ensemble import (
+        from openelm.environments.bioseq.utr_fitness_function.one_shot_scoring_ensemble.fitness_scoring_ensemble import (
             FitnessScoringEnsemble,
         )
         if not isinstance(config, FitnessBioEnsembleConfig):

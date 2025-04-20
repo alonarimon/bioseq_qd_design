@@ -3,14 +3,12 @@ from typing import Optional
 
 import numpy as np
 import torch
-from rapidfuzz.distance import Levenshtein
 
 from design_bench.datasets.discrete_dataset import DiscreteDataset
 from design_bench.disk_resource import DiskResource
 from design_bench.oracles.tensorflow import ResNetOracle
-from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig, ModelConfig
+from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig
 from openelm.environments.base import BaseEnvironment
-from openelm.environments.bioseq.utr_fitness_function.fitness_scoring_ensemble import FitnessScoringEnsemble
 from openelm.mutation_model import MutationModel, get_model
 from openelm.utils.evaluation import evaluate_solutions_set
 
