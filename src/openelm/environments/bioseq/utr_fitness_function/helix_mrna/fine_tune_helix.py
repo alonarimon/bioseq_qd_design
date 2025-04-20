@@ -8,6 +8,7 @@ import os
 
 from helical.models.helix_mrna import HelixmRNAFineTuningModel, HelixmRNAConfig
 from openelm.environments.bioseq.utr_fitness_function.helix_mrna.configs import HelixFineTuneConfig
+from openelm.utils.plots import plot_learning_curves
 
 # === Load Config ===
 config = HelixFineTuneConfig()
@@ -28,9 +29,11 @@ x = np.load(os.path.join(config.data_dir, "x.npy"))
 y = np.load(os.path.join(config.data_dir, "y.npy")).flatten()
 alphabet = config.alphabet
 
+
 def numbers_seq_to_alphabet(seq):
     """Convert a sequence of numbers to a string of letters."""
     return "".join([alphabet[i] for i in seq])
+
 
 input_sequences = [numbers_seq_to_alphabet(seq) for seq in x]
 labels = y.tolist()
@@ -47,9 +50,15 @@ if config.loss == "mse":
 else:
     raise ValueError(f"Loss function {config.loss} not supported.")
 
-model.train(train_dataset=train_dataset, train_labels=labels, epochs=config.epochs, loss_function=loss)
+train_losses, val_losses = model.train(train_dataset=train_dataset, train_labels=labels, epochs=config.epochs,
+                                       loss_function=loss, return_loss=True)
 model.save_model(os.path.join(exp_dir, "model"))
+# === Save training curve plot ===
+learning_stats = {
+    "train_loss": train_losses,
+    # "val_loss": val_losses, #todo : when validation is implemented
+}
+plot_learning_curves(learning_stats, save_dir=exp_dir,
+                     model_id=0,
+                     title="Helix mRNA Fine-tuning", x_label="Epochs", y_label="MSE Loss")
 
-train_outputs = model.get_outputs(train_dataset)
-np.save(os.path.join(exp_dir, "train_outputs.npy"), train_outputs)
-print("Output shape:", train_outputs.shape)
