@@ -2,3 +2,6 @@
 [submodule "design-bench-detached"]
 	path = design-bench-detached
 	url = https://github.com/alonarimon/design-bench-detached
+[submodule "external/helical"]
+	path = external/helical
+	url = https://github.com/alonarimon/helical.git
