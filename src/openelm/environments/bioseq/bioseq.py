@@ -8,9 +8,9 @@ from rapidfuzz.distance import Levenshtein
 from design_bench.datasets.discrete_dataset import DiscreteDataset
 from design_bench.disk_resource import DiskResource
 from design_bench.oracles.tensorflow import ResNetOracle
-from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig
+from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig, ModelConfig
 from openelm.environments.base import BaseEnvironment
-from openelm.environments.bioseq.utr_fitness_function.fitness_model import FitnessScoringEnsemble
+from openelm.environments.bioseq.utr_fitness_function.fitness_scoring_ensemble import FitnessScoringEnsemble
 from openelm.mutation_model import MutationModel, get_model
 from openelm.utils.evaluation import evaluate_solutions_set
 
@@ -74,7 +74,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
     def __init__(
             self,
             config: QDBioRNAEnvConfig,
-            mutation_model: MutationModel,
+            mutation_model: MutationModel #todo: not in use, GET CONFIG?
     ):
         """
         Args:
@@ -96,15 +96,10 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"Using device: {self.device}")
-        self.fitness_function = FitnessScoringEnsemble(self.sequence_length,
-                                                        len(self.alphabet),
-                                                        config.scoring_model_path,
-                                                        self.device,
-                                                        config.fitness_ensemble_size,
-                                                        config.beta)
+        
+        self.fitness_function = get_model(config.fitness_model_config)
 
         # self.projection_matrix = # todo: for similarity-based bd
-        self.beta = config.beta # penalty term factor (in the fitness function)
         self.bd_type = config.bd_type # behavioral descriptor type (e.g. 'nucleotides_frequencies')
         if self.config.normalize_bd:
             self.bd_min, self.bd_max = self.get_training_bd_stats()  # Get the min and max values for the behavioral descriptor space

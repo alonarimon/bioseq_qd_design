@@ -47,6 +47,15 @@ class BioRandomModelConfig(ModelConfig):
     model_name: str = "bio_random"
     model_path: str = "bio_random" #todo
 
+@dataclass
+class FitnessBioEnsembleConfig(ModelConfig):
+    model_type: str = "bio_ensemble"  # Can be "hf", "openai", etc
+    model_name: str = "fitness_bio_ensemble"
+    model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\src\openelm\environments\bioseq\utr_fitness_function\scoring_models"  # Path to the scoring model #todo: not absolute path
+    ensemble_size: int = 4 # Number of scoring models to use for fitness evaluation #todo: 18
+    beta: float = 2.0  # Penalty term factor
+    alphabet_size: int = 4 # Size of the alphabet (e.g., 4 for nucleotides ACGU)
+    sequence_length: int = 50 # Length of the sequence to be evaluated
 
 @dataclass
 class QDConfig(BaseConfig):
@@ -168,17 +177,14 @@ class QDBioRNAEnvConfig(EnvConfig):
     )
     sequence_length: int = 50
     alphabet: list[int] = field(default_factory=lambda: [0, 1, 2, 3]) # todo: interoperation
-    beta: float = 2.0  # Penalty term factor
     bd_type: str = "nucleotides_frequencies" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred).
-    fitness_ensemble_size: int = 4 # Number of scoring models to use for fitness evaluation #todo: 18
     size_of_refs_collection: int =  16384 # Number of reference sequences to use for novelty evaluation and BD
-
-    scoring_model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\src\openelm\environments\bioseq\utr_fitness_function\scoring_models"  # Path to the scoring model #todo: not absolute path
-    offline_data_dir: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42"  # Path to the offline data directory #todo: not absolute path
+    offline_data_dir: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42"  # Path to the offline data directory #todo: not absolute path
     offline_data_x_file: str = "x.npy"  # Name of the offline data X file
     offline_data_y_file: str = "y.npy"  # Name of the offline data Y file
-    oracle_model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig"  # Path to the oracle model #todo: not absolute path
+    oracle_model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig"  # Path to the oracle model #todo: not absolute path
     normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
+    fitness_model_config: FitnessBioEnsembleConfig = field(default_factory=FitnessBioEnsembleConfig)
 
 @dataclass
 class PromptEnvConfig(EnvConfig):
@@ -264,6 +270,7 @@ def register_configstore() -> ConfigStore:
     cs.store(group="model", name="prompt", node=PromptModelConfig)
     cs.store(group="model", name="diff", node=DiffModelConfig)
     cs.store(group="model", name="bio_random", node=BioRandomModelConfig)
+    cs.store(group="fitness_model", name="fitness_bio_ensemble", node=FitnessBioEnsembleConfig)
     cs.store(name="elmconfig", node=ELMConfig)
     cs.store(name="p3config", node=P3Config)
     return cs

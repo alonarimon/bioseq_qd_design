@@ -15,11 +15,11 @@ from pydantic import Extra, root_validator
 from transformers import BatchEncoding
 
 from openelm.codegen import model_setup, set_seed, truncate
-from openelm.configs import ModelConfig
+from openelm.configs import ModelConfig, FitnessBioEnsembleConfig
 from openelm.utils.diff_eval import apply_diff, split_diff
 
 
-def get_model(config: ModelConfig):
+def get_model(config: ModelConfig): #todo: move from this file
     print(f"Loading model {config.model_type}")
     if config.model_type == "hf":
         return HuggingFaceLLM(config=config)
@@ -38,6 +38,13 @@ def get_model(config: ModelConfig):
             return OpenAI(**cfg)
     elif config.model_type == "bio_random":
         return RandomSequenceMutator(config=config) #todo ?
+    elif config.model_type == "bio_ensemble":
+        from openelm.environments.bioseq.utr_fitness_function.fitness_scoring_ensemble import (
+            FitnessScoringEnsemble,
+        )
+        if not isinstance(config, FitnessBioEnsembleConfig):
+            raise ValueError("Invalid config for fitness scoring ensemble.")
+        return FitnessScoringEnsemble(config=config)
     else:
         raise NotImplementedError
 

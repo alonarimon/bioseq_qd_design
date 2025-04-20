@@ -3,6 +3,7 @@ import os
 import numpy as np
 import torch
 
+from openelm.configs import FitnessBioEnsembleConfig
 from openelm.environments.bioseq.utr_fitness_function.scoring_model import ScoringNetwork
 from openelm.environments.bioseq.utr_fitness_function.preprocess import sequence_nuc_to_one_hot, log_interpolated_one_hot
 
@@ -32,19 +33,16 @@ class FitnessScoringEnsemble:
     """
     A wrapper class for a scoring ensemble that allows for batch processing of sequences.
     """
-    def __init__(self, seq_len, K, model_dir, device="cuda", ensemble_size=1, beta=0.0):
+    def __init__(self, config: FitnessBioEnsembleConfig):
         """
         Initializes the scoring ensemble.
-        :param seq_len: Length of the sequences.
-        :param K: alphabet size
-        :param model_dir: Directory containing the scoring models.
-        :param device: Device to load the models on (e.g., "cpu" or "cuda").
-        :param ensemble_size: Number of models to load from the directory.
-        :param beta: Penalty term factor
+        :param config: Configuration object containing the model parameters.
         """
-        self.scoring_ensemble = load_scoring_ensemble(seq_len, K, model_dir, device, ensemble_size)
+        device = "cuda" if torch.cuda.is_available() and config.cuda else "cpu"
         self.device = device
-        self.beta = beta
+        self.scoring_ensemble = load_scoring_ensemble(config.sequence_length, config.alphabet_size,
+            config.model_path, device, config.ensemble_size)
+        self.beta = config.beta
 
     def __call__(self, sequence):
         """
