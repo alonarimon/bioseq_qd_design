@@ -1,0 +1,19 @@
+{
+    "debug": false,
+    "batch_size": 1,
+    "val_batch_size": 1,
+    "val_fraction": 0.3,
+    "epochs": 1,
+    "max_length": 50,
+    "loss": "mse",
+    "output_size": 1,
+    "device": "cuda",
+    "alphabet": [
+        "A",
+        "C",
+        "G",
+        "U"
+    ],
+    "data_dir": "C:\\Users\\Alona\\Desktop\\Imperial_college_london\\MSc_project_code\\bioseq_qd_design\\design-bench-detached\\design_bench_data\\utr\\oracle_data\\original_v0_minmax_orig\\sampled_offline_relabeled_data\\sampled_data_fraction_1_3_seed_42",
+    "save_base_dir": "logs/helix_mrna_fine_tune"
+}

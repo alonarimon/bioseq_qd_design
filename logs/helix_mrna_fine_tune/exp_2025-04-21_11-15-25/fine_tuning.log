@@ -1,0 +1,16 @@
+2025-04-21 11:15:25,734 - INFO - Logging initialized. Logs will be saved to logs/helix_mrna_fine_tune\exp_2025-04-21_11-15-25\fine_tuning.log
+2025-04-21 11:15:25,745 - INFO - X_train shape: (65333, 50), Y_train shape: (65333,)
+2025-04-21 11:15:25,745 - INFO - X_val shape: (28000, 50), Y_val shape: (28000,)
+2025-04-21 11:15:26,741 - WARNING - The fast path is not available because on of `(selective_state_update, causal_conv1d_fn, causal_conv1d_update)` is None. Falling back to the naive implementation. To install follow https://github.com/state-spaces/mamba/#installation and https://github.com/Dao-AILab/causal-conv1d
+2025-04-21 11:15:27,523 - INFO - Helix-mRNA initialized successfully.
+2025-04-21 11:15:27,523 - INFO - 'helical-ai/Helix-mRNA' model is in 'eval' mode, on device 'cuda'.
+2025-04-21 11:15:27,523 - INFO - Processing data for Helix-mRNA.
+2025-04-21 11:15:37,880 - INFO - Successfully processed the data for Helix-mRNA.
+2025-04-21 11:15:37,896 - INFO - Processing data for Helix-mRNA.
+2025-04-21 11:15:41,103 - INFO - Successfully processed the data for Helix-mRNA.
+2025-04-21 11:15:41,103 - INFO - Fine-Tuning Helix-mRNA Model on cuda
+2025-04-21 11:15:41,119 - INFO - Unfreezing the last 2 layers of the Helix_mRNA model.
+2025-04-21 11:15:41,119 - INFO - Starting Fine-Tuning
+2025-04-21 12:37:37,575 - INFO - Model saved to logs/helix_mrna_fine_tune\exp_2025-04-21_11-15-25/model_epoch_1
+2025-04-21 12:37:37,582 - INFO - Fine-Tuning Complete. Epochs: 1
+2025-04-21 12:37:37,630 - INFO - Model saved to logs/helix_mrna_fine_tune\exp_2025-04-21_11-15-25\model
