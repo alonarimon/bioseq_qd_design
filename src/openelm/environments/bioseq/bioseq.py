@@ -10,6 +10,7 @@ from design_bench.oracles.tensorflow import ResNetOracle
 from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig
 from openelm.environments.base import BaseEnvironment
 from openelm.mutation_model import MutationModel, get_model
+from openelm.environments.bioseq.utr_fitness_function.fitness_model import get_fitness_model
 from openelm.utils.evaluation import evaluate_solutions_set
 
 MAP_INT_TO_LETTER = {
@@ -83,6 +84,8 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         print(f"Initializing RNAEvolution environment with config: {config}")
         self.config = config
         self.mutation_model = get_model(mutation_model.config) #todo: not in use
+        self.fitness_function = get_fitness_model(config.fitness_model_config)
+
         self.batch_size = config.batch_size
         self.genotype_space = np.array(
             self.config.behavior_space).T  # todo: i think it should be renamed to behavior_space (in the base class)
@@ -101,7 +104,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(config.seed)
         
-        self.fitness_function = get_model(config.fitness_model_config)
+
 
         # self.projection_matrix = # todo: for similarity-based bd
         self.bd_type = config.bd_type # behavioral descriptor type (e.g. 'nucleotides_frequencies')
@@ -222,8 +225,8 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         The fitness is the mean of the scores minus a penalty term.
         :param x: RNAGenotype
         :return: fitness score (float)
-        """
-        fitness, mean, std = self.fitness_function(x.sequence)
+        """ # todo: make the fitness function work in batch mode
+        fitness = self.fitness_function(x.sequence)
         return fitness
 
     def eval_with_oracle(self, genotypes=list[RNAGenotype], k=128) -> tuple:
@@ -240,7 +243,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         refs = [genotype.sequence for genotype in self.reference_set]
         list_of_solutions_np = np.array(sequences)
 
-        # Evaluate the solutions using the oracle model
+        # Evaluate the solutions using the oracle model #todo: switch to eval mode and use no_grad
         scores = self.oracle.predict(list_of_solutions_np).flatten()
 
         # calculate scores for all solutions

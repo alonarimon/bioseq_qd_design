@@ -38,13 +38,6 @@ def get_model(config: ModelConfig): #todo: move from this file
             return OpenAI(**cfg)
     elif config.model_type == "bio_random":
         return RandomSequenceMutator(config=config) #todo ?
-    elif config.model_type == "bio_ensemble":
-        from openelm.environments.bioseq.utr_fitness_function.one_shot_scoring_ensemble.fitness_scoring_ensemble import (
-            FitnessScoringEnsemble,
-        )
-        if not isinstance(config, FitnessBioEnsembleConfig):
-            raise ValueError("Invalid config for fitness scoring ensemble.")
-        return FitnessScoringEnsemble(config=config)
     else:
         raise NotImplementedError
 

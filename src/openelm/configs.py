@@ -58,12 +58,19 @@ class FitnessBioEnsembleConfig(ModelConfig):
     sequence_length: int = 50 # Length of the sequence to be evaluated
 
 @dataclass
+class FitnessHelixMRNAConfig(ModelConfig):
+    model_type: str = "helix_mrna"
+    model_name: str = "fitness_helix_mrna"
+    model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\logs\helix_mrna_fine_tune\exp_2025-04-21_11-15-25\model" #todo
+    alphabet: list[str] = field(default_factory=lambda: ["A", "C", "G", "U"]) # todo: validate mapping
+
+@dataclass
 class QDConfig(BaseConfig):
     init_steps: int = 1 
-    total_steps: int =  20000 #100000
+    total_steps: int =  100  #100000
     history_length: int = 1
     save_history: bool = False
-    save_snapshot_interval: int = 1000 #2000
+    save_snapshot_interval: int = 25
     log_snapshot_dir: str = ""
     seed: Optional[int] = 42
     save_np_rng_state: bool = False
@@ -72,7 +79,7 @@ class QDConfig(BaseConfig):
     crossover_parents: int = 2
     eval_with_oracle_on_snapshot: bool = True
     number_of_final_solutions: int = 128
-    eval_with_oracle_interval : int = 5 # evaluation with oracle is usually slow, so recommend to do it not often
+    eval_with_oracle_interval : int = 25 # evaluation with oracle is usually slow, so recommend to do it not often
 
 
 @dataclass
@@ -184,7 +191,7 @@ class QDBioRNAEnvConfig(EnvConfig):
     offline_data_y_file: str = "y.npy"  # Name of the offline data Y file
     oracle_model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig"  # Path to the oracle model #todo: not absolute path
     normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
-    fitness_model_config: FitnessBioEnsembleConfig = field(default_factory=FitnessBioEnsembleConfig)
+    fitness_model_config: ModelConfig = field(default_factory=FitnessHelixMRNAConfig)
 
 @dataclass
 class PromptEnvConfig(EnvConfig):

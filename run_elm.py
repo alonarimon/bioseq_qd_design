@@ -9,12 +9,15 @@ environment, a 2D physics-based environment in which robots specified by
 Python dictionaries are evolved over.
 
 """
+import logging
+
 import hydra
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import OmegaConf
 
 from openelm import ELM
 
+logging.getLogger("helical").setLevel(logging.WARNING)
 
 @hydra.main(
     config_name="elmconfig",

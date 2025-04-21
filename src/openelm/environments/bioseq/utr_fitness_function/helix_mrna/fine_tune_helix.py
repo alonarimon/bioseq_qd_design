@@ -107,11 +107,11 @@ if config.loss == "mse":
 else:
     raise ValueError(f"Loss function {config.loss} not supported.")
 
-train_losses, val_losses = model.train(train_dataset=train_dataset, train_labels=labels_train,
-                                       validation_dataset=val_dataset, validation_labels=labels_val,
-                                       epochs=config.epochs,
-                                       loss_function=loss, return_loss=True,
-                                       save_dir=exp_dir)
+train_losses, val_losses = model.train_fine_tune(train_dataset=train_dataset, train_labels=labels_train,
+                                                 validation_dataset=val_dataset, validation_labels=labels_val,
+                                                 epochs=config.epochs,
+                                                 loss_function=loss, return_loss=True,
+                                                 save_dir=exp_dir)
 
 model.save_model(os.path.join(exp_dir, "model"))
 
@@ -123,3 +123,7 @@ learning_stats = {
 plot_learning_curves(learning_stats, save_dir=exp_dir,
                      model_id=config.epochs,
                      title="Helix mRNA Fine-tuning", x_label="Epochs", y_label="MSE Loss")
+
+logger.info("Training complete and model saved.")
+logger.info(f"train losses: {train_losses}")
+logger.info(f"val losses: {val_losses}")
