@@ -438,7 +438,7 @@ class MAPElitesBase:
             fitness = self.env.fitness(individual)
             if np.isinf(fitness):
                 continue
-            phenotype = individual.to_phenotype()
+            phenotype = self.env.to_phenotype(individual)
             map_ix = self.to_mapindex(phenotype)
 
             # if the return is None, the individual is invalid and is thrown
@@ -870,9 +870,9 @@ class CVTMAPElites(MAPElitesBase):
                 # get the first three dimensions for each behaviour in the history
                 if self.genomes.history_length > 1:
                     phenotypes = [
-                        g.to_phenotype()[:3]
+                        self.env.to_phenotype(g)[:3]
                         for g in self.genomes.array[:, i]
-                        if hasattr(g, "to_phenotype")
+                        if isinstance(g, Genotype)
                     ]
                     if phenotypes:
                         hist = np.stack(phenotypes)
@@ -886,11 +886,11 @@ class CVTMAPElites(MAPElitesBase):
                         )
                 else:
                     g = self.genomes.array[i]
-                    if hasattr(g, "to_phenotype"):
+                    if isinstance(g, Genotype):
                         ax.scatter(
-                            g.to_phenotype()[0],
-                            g.to_phenotype()[1],
-                            g.to_phenotype()[2],
+                            self.env.to_phenotype(g)[0],
+                            self.env.to_phenotype(g)[1],
+                            self.env.to_phenotype(g)[2],
                             s=10,
                             marker=".",
                             c=[color],

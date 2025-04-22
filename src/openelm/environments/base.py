@@ -80,6 +80,10 @@ class BaseEnvironment(ABC, Generic[GenoType]):
         """Generate initial sequences."""
         return self.random()
 
+    def to_phenotype(self, x: GenoType) -> Phenotype:
+        """Convert genotype to phenotype."""
+        return x.to_phenotype()
+
     @abstractmethod
     def random(self) -> list[GenoType]:
         raise NotImplementedError

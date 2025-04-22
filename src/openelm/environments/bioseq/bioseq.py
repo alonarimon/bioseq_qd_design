@@ -8,7 +8,7 @@ from design_bench.datasets.discrete_dataset import DiscreteDataset
 from design_bench.disk_resource import DiskResource
 from design_bench.oracles.tensorflow import ResNetOracle
 from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig
-from openelm.environments.base import BaseEnvironment
+from openelm.environments.base import BaseEnvironment, Phenotype, Genotype
 from openelm.mutation_model import MutationModel, get_model
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import get_fitness_model
 from openelm.utils.evaluation import evaluate_solutions_set
@@ -21,46 +21,20 @@ MAP_INT_TO_LETTER = {
 } # todo: check if this is correct
 
 
-class RNAGenotype:
+class RNAGenotype(Genotype):
     """
     A simple genotype class for RNA bioseq generation. (without llms)
     """
 
-    def __init__(self, sequence: list[int], min_bd: float, max_bd: float):
+    def __init__(self, sequence: list[int]):
         self.sequence = sequence
-        self.min_bd = min_bd
-        self.max_bd = max_bd
 
-    def _nucleotides_frequencies(self) -> np.ndarray:
+    def to_phenotype(self) -> Optional[Phenotype]:
         """
-        Calculate the frequencies of nucleotides in a sequence.
-        :return: numpy array with frequencies of the nucleotides 0, 1, 2
+        Convert the genotype to a phenotype.
+        :return: Phenotype representation of the genotype.
         """
-        freq = np.zeros(3, dtype=float)
-        for letter in self.sequence:
-            if letter == 0:
-                freq[0] += 1
-            elif letter == 1:
-                freq[1] += 1
-            elif letter == 2:
-                freq[2] += 1
-        # Normalize frequencies
-        freq /= len(self.sequence)
-        # normalize according to the min and max values and clip to [0, 1]
-        freq = (freq - self.min_bd) / (self.max_bd - self.min_bd)
-        freq = np.clip(freq, 0, 1)
-        return freq
-
-    def to_phenotype(self, bd_type = "nucleotides_frequencies") -> Optional[np.ndarray]:
-        """
-        Convert sequence to a phenotype representation (behavioral descriptor) according to the specified type.
-        :param bd_type: str (e.g. 'nucleotides_frequencies')
-        return: np.ndarray with dtype float
-        """
-        if bd_type == "nucleotides_frequencies":
-            return self._nucleotides_frequencies()
-        else:
-            raise ValueError(f"Unknown bd_type: {bd_type}. Supported: nucleotides_frequencies")
+        raise NotImplementedError("Phenotype conversion is not implemented for RNAGenotype, expect to use the environment's to_phenotype method.")
 
     def __str__(self):
         """
@@ -108,11 +82,11 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
 
         # self.projection_matrix = # todo: for similarity-based bd
         self.bd_type = config.bd_type # behavioral descriptor type (e.g. 'nucleotides_frequencies')
+        self.bd_min = 0
+        self.bd_max = 1
         if self.config.normalize_bd:
             self.bd_min, self.bd_max = self.get_training_bd_stats()  # Get the min and max values for the behavioral descriptor space
-        else:
-            self.bd_min = 0
-            self.bd_max = 1
+
         self.oracle = self._load_oracle()  # Load the oracle model from disk, for final evaluation on the solutions (not used in the optimization process)
         # todo: here they originally had 'del mutation_model'. see if it is needed (and if it does - delete it outside the constructor)
 
@@ -151,9 +125,9 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         :return: tuple of min and max values for the behavioral descriptor space.
         """
         offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
-        offline_data_genotypes = [RNAGenotype(seq, 0, 1) for seq in offline_data_x]
+        offline_data_genotypes = [RNAGenotype(seq) for seq in offline_data_x]
         # Calculate the behavioral descriptor for each genotype
-        bd_values = np.array([genotype.to_phenotype(self.bd_type) for genotype in offline_data_genotypes])
+        bd_values = np.array([self.to_phenotype(genotype) for genotype in offline_data_genotypes])
         # Calculate the min and max values for each behavioral descriptor, for all dimensions
         min_bd = np.min(bd_values, axis=0)
         max_bd = np.max(bd_values, axis=0)
@@ -170,14 +144,51 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         """
         Generate a batch of initial sequences by randomly sample from the offline data.
         @return: list of RNAGenotype
-        """ #todo: when comparing between methods, this should be the same seeds all the time
+        """ #todo: when comparing between methods, this should be the same seeds all the
+        # todo: maybe I should take from the ref set instead of the offline data?
         offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
         random_indexes = self.rng.choice(offline_data_x.shape[0], size=self.batch_size, replace=False)
         initial_sequences = offline_data_x[random_indexes]
-        initial_genotypes = [RNAGenotype(seq, min_bd=self.bd_min, max_bd=self.bd_max) for seq in initial_sequences]
+        initial_genotypes = [RNAGenotype(seq) for seq in initial_sequences]
         print("Initial sequences[:5]:\n", [str(s) for s in initial_genotypes[:5]])
         print("index of initial sequences:\n", random_indexes[:5])
         return initial_genotypes
+
+    def _nucleotides_frequencies(self, x: RNAGenotype) -> np.ndarray:
+        """
+        Calculate the frequencies of nucleotides in a sequence.
+        :return: numpy array with frequencies of the nucleotides 0, 1, 2
+        """
+        freq = np.zeros(3, dtype=float)
+        for letter in x.sequence:
+            if letter == 0:
+                freq[0] += 1
+            elif letter == 1:
+                freq[1] += 1
+            elif letter == 2:
+                freq[2] += 1
+        # Normalize frequencies
+        freq /= len(x.sequence)
+
+        return freq
+
+    def to_phenotype(self, x: RNAGenotype) -> Phenotype:
+        """
+        Convert a genotype to a phenotype.
+        :param x: genotype
+        :return: phenotype
+        """
+        if self.config.bd_type == "nucleotides_frequencies":
+            freq = self._nucleotides_frequencies(x)
+            if self.config.normalize_bd:
+                # normalize according to the min and max values and clip to [0, 1]
+                freq = (freq - self.bd_min) / (self.bd_max - self.bd_min)
+                freq = np.clip(freq, 0, 1)
+            return freq
+        elif self.config.bd_type == "ref_set_similarity": # todo: not implemented yet
+            raise NotImplementedError("ref_set_similarity is not implemented yet")
+        else:
+            raise ValueError(f"Unknown bd_type: {self.config.bd_type}. Supported: nucleotides_frequencies")
 
     def _load_ref_set(self) -> list[RNAGenotype]:
         """
@@ -188,7 +199,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
         random_indexes = self.rng.choice(offline_data_x.shape[0], size=self.config.size_of_refs_collection, replace=False)
         reference_set = offline_data_x[random_indexes]
-        reference_set = [RNAGenotype(seq,  min_bd=0, max_bd=1) for seq in reference_set]
+        reference_set = [RNAGenotype(seq) for seq in reference_set]
         return reference_set
 
     def _random_seq(self) -> list[int]:
@@ -211,13 +222,13 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         """
         Generate a batch of random genotypes.
         """
-        return [RNAGenotype(self._random_seq(), min_bd=self.bd_min, max_bd=self.bd_max) for _ in range(self.batch_size)]
+        return [RNAGenotype(self._random_seq()) for _ in range(self.batch_size)]
 
     def mutate(self, genomes: list[RNAGenotype]) -> list[RNAGenotype]:
         """
         Mutate a list of genomes by applying the mutation function to each genome.
         """
-        return [RNAGenotype(self._mutate_seq(g.sequence), min_bd=self.bd_min, max_bd=self.bd_max) for g in genomes] #todo: change to use mutation model
+        return [RNAGenotype(self._mutate_seq(g.sequence)) for g in genomes] #todo: change to use mutation model
 
     def fitness(self, x: RNAGenotype) -> float:
         """
