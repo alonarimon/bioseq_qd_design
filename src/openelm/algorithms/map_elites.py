@@ -861,9 +861,9 @@ class CVTMAPElites(MAPElitesBase):
                     self.centroids[i, 0],
                     self.centroids[i, 1],
                     self.centroids[i, 2],
-                    s=150,
+                    s=20,
                     marker="x",
-                    c=[color],
+                    c=[[0.5, 0.5, 0.5, 0.2]],  # light gray with alpha,
                     label=f"Niche {i}",
                 )
 
