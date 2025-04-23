@@ -13,7 +13,7 @@ from design_bench.oracles.tensorflow import ResNetOracle
 from openelm.environments.bioseq.bioseq import RNAGenotype
 
 ORACLE_NAME = "original_v0_minmax_orig"
-DATASET_PATH = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench-detached\design_bench_data\utr"
+DATASET_PATH = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\design-bench-detached\design_bench_data\utr"
 
 
 def evaluate_final_solutions(list_of_solutions, oracle_model, ref_solutions=None):
@@ -80,7 +80,7 @@ def loaf_ref_list(x_data_path, size_to_sample):
 
 if __name__ == '__main__':
     # load maps from pkl file
-    exp_logs_dir = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\logs\elm\25-04-16_15-09\step_19999"
+    exp_logs_dir = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\logs\elm\25-04-22_22-23\step_10000"
     maps_pkl_file = os.path.join(exp_logs_dir, "maps.pkl")
     with open(maps_pkl_file, "rb") as f:
         maps = pickle.load(f)
@@ -91,14 +91,14 @@ if __name__ == '__main__':
     # load oracle model
     oracle = load_oracle(DATASET_PATH, ORACLE_NAME)
 
-    offline_data_path_x = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42"
+    offline_data_path_x = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42"
     ref_list = loaf_ref_list(os.path.join(offline_data_path_x, "x.npy"), 16384)
 
     # evaluate the genomes
     max_score, diversity_score, mean_score, novelty_score, scores = evaluate_final_solutions(non_zero_seq, oracle, ref_list)
     print(f"Max score: {max_score}, Diversity score: {diversity_score}, Mean score: {mean_score}, Novelty score: {novelty_score}")
     max_score_sequence = non_zero_seq[np.argmax(scores)]
-    max_rna = RNAGenotype(max_score_sequence, 0, 1)
+    max_rna = RNAGenotype(max_score_sequence)
     print(f"Max score sequence (RNA): {max_rna}")
 
     # evaluate top 128 sequences (w.r.t. oracle)
