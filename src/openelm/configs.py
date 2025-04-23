@@ -51,7 +51,7 @@ class BioRandomModelConfig(ModelConfig):
 class FitnessBioEnsembleConfig(ModelConfig):
     model_type: str = "bio_ensemble"  # Can be "hf", "openai", etc
     model_name: str = "fitness_bio_ensemble"
-    model_path: str = r"/openelm/environments/bioseq/utr_fitness_function/one_shot_scoring_ensemble/scoring_models"  # Path to the scoring model #todo: not absolute path
+    model_path: str = r"src/openelm/environments/bioseq/utr_fitness_function/one_shot_scoring_ensemble/scoring_models"  # Path to the scoring model #todo: not absolute path
     ensemble_size: int = 4 # Number of scoring models to use for fitness evaluation #todo: 18
     beta: float = 2.0  # Penalty term factor
     alphabet_size: int = 4 # Size of the alphabet (e.g., 4 for nucleotides ACGU)
@@ -67,10 +67,10 @@ class FitnessHelixMRNAConfig(ModelConfig):
 @dataclass
 class QDConfig(BaseConfig):
     init_steps: int = 1 
-    total_steps: int =  100  #100000
+    total_steps: int =  5000  #100000
     history_length: int = 1
     save_history: bool = False
-    save_snapshot_interval: int = 25
+    save_snapshot_interval: int = 1000
     log_snapshot_dir: str = ""
     seed: Optional[int] = 42
     save_np_rng_state: bool = False
@@ -79,7 +79,7 @@ class QDConfig(BaseConfig):
     crossover_parents: int = 2
     eval_with_oracle_on_snapshot: bool = True
     number_of_final_solutions: int = 128
-    eval_with_oracle_interval : int = 25 # evaluation with oracle is usually slow, so recommend to do it not often
+    eval_with_oracle_interval : int = 5000 # evaluation with oracle is usually slow, so recommend to do it not often
 
 
 @dataclass
@@ -179,19 +179,20 @@ class QDBioRNAEnvConfig(EnvConfig):
         default_factory=lambda: [
             [0, 1],
             [0, 1],
-            [0, 1],
         ]
     )
     sequence_length: int = 50
     alphabet: list[int] = field(default_factory=lambda: [0, 1, 2, 3]) # todo: interoperation
-    bd_type: str = "nucleotides_frequencies" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred).
-    size_of_refs_collection: int =  16384 # Number of reference sequences to use for novelty evaluation and BD
+    size_of_refs_collection: int =  2048 # Number of reference sequences to use for novelty evaluation and BD
     offline_data_dir: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42"  # Path to the offline data directory #todo: not absolute path
     offline_data_x_file: str = "x.npy"  # Name of the offline data X file
     offline_data_y_file: str = "y.npy"  # Name of the offline data Y file
     oracle_model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig"  # Path to the oracle model #todo: not absolute path
+    fitness_model_config: ModelConfig = field(default_factory=lambda: FitnessBioEnsembleConfig())
+    bd_type: str = "similarity_based" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred). "similarity_based": The phenotype is a vector of the similarity of the sequence to the offline ref data.
     normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
-    fitness_model_config: ModelConfig = field(default_factory=FitnessHelixMRNAConfig)
+    distance_normalization_constant: float = 14.3378899  # Constant for distance normalization (for the similarity-based BD). -1 means constant will be automatically calculated from the offline data.
+    initial_population_sample_seed: int = 123  # Path to the initial population file #todo: not absolute path
 
 @dataclass
 class PromptEnvConfig(EnvConfig):

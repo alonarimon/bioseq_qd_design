@@ -1,17 +1,24 @@
+import logging
 import os
 from typing import Optional
 
 import numpy as np
 import torch
+from scipy.special import softmax
+from tqdm import tqdm
+import Levenshtein
 
 from design_bench.datasets.discrete_dataset import DiscreteDataset
 from design_bench.disk_resource import DiskResource
 from design_bench.oracles.tensorflow import ResNetOracle
+
 from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig
 from openelm.environments.base import BaseEnvironment, Phenotype, Genotype
 from openelm.mutation_model import MutationModel, get_model
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import get_fitness_model
 from openelm.utils.evaluation import evaluate_solutions_set
+
+logger = logging.getLogger()
 
 MAP_INT_TO_LETTER = {
     0: "A",
@@ -70,7 +77,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         self.reference_set = self._load_ref_set()
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"Using device: {self.device}")
+        logger.info(f"Using device: {self.device}")
         # set all random seeds for reproducibility
         torch.manual_seed(config.seed)
         np.random.seed(config.seed)
@@ -78,18 +85,44 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(config.seed)
         
+        if self.config.bd_type == "similarity_based":
+            self.projection_matrix = np.random.uniform(low=0.0, high=1.0, size=(config.size_of_refs_collection, len(config.behavior_space))).astype(np.float32)  # Initialize W from N(0,1)
+            logger.info(f"Projection matrix W shape: {self.projection_matrix.shape}")
+            if config.distance_normalization_constant < 0:
+                self.R_normalization_constant = self._get_r_distance_norm_const(subsample=True)  # todo: need to be done once without subsampling
+            else:
+                self.R_normalization_constant = config.distance_normalization_constant
+            logger.info(f"R normalization constant: {self.R_normalization_constant}")
 
-
-        # self.projection_matrix = # todo: for similarity-based bd
-        self.bd_type = config.bd_type # behavioral descriptor type (e.g. 'nucleotides_frequencies')
         self.bd_min = 0
         self.bd_max = 1
         if self.config.normalize_bd:
-            self.bd_min, self.bd_max = self.get_training_bd_stats()  # Get the min and max values for the behavioral descriptor space
+            subsample = self.config.bd_type == "similarity_based" # we subsample the offline data only for the similarity based bd, because it is expensive
+            self.bd_min, self.bd_max = self.get_training_bd_stats(subsample=subsample)
+
+        logger.info(f"Behavioral descriptor min: {self.bd_min}, max: {self.bd_max}")
 
         self.oracle = self._load_oracle()  # Load the oracle model from disk, for final evaluation on the solutions (not used in the optimization process)
         # todo: here they originally had 'del mutation_model'. see if it is needed (and if it does - delete it outside the constructor)
 
+    def _get_r_distance_norm_const(self, subsample = False) -> float:
+        """
+        Calculate the normalization constant for the distance metric.
+        :param subsample: if True, subsample the offline data to the size of the reference collection x 2.
+        :return: Normalization constant.
+        """
+        dists = []
+        offline_data = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
+        if subsample:
+            sampled_indexes = self.rng.choice(offline_data.shape[0], size=(self.config.size_of_refs_collection * 2), replace=False)
+            offline_data = offline_data[sampled_indexes]
+        for i in tqdm(range(len(offline_data)), desc="Calculating R normalization constant"):
+            for j in range(i + 1, len(offline_data)):
+                    dist = Levenshtein.distance(offline_data[i], offline_data[j])
+                    dists.append(dist)
+
+        R_normalization_constant = np.mean(dists) / 2
+        return R_normalization_constant
 
     def _load_oracle(self):
         """
@@ -112,19 +145,27 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
 
         )
 
-        print("Oracle params:\n",
-              "rank_correlation:", oracle.params["rank_correlation"],
-              "\nmodel_kwargs:", oracle.params["model_kwargs"],
-              "\nsplit_kwargs:", oracle.params["split_kwargs"])
+        logger.info(
+            f"Oracle params:\n"
+            f"rank_correlation: {oracle.params['rank_correlation']}\n"
+            f"model_kwargs: {oracle.params['model_kwargs']}\n"
+            f"split_kwargs: {oracle.params['split_kwargs']}"
+        )
 
         return oracle
 
-    def get_training_bd_stats(self) -> tuple:
+    def get_training_bd_stats(self, subsample = False) -> tuple:
         """
         Get the training behavioral descriptor statistics.
+        :param subsample: if True, subsample the offline data to the size of the reference collection.
         :return: tuple of min and max values for the behavioral descriptor space.
         """
         offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
+        if subsample:
+            # Subsample the offline data
+            random_indexes = self.rng.choice(offline_data_x.shape[0], size=self.config.size_of_refs_collection, replace=False)
+            offline_data_x = offline_data_x[random_indexes]
+
         offline_data_genotypes = [RNAGenotype(seq) for seq in offline_data_x]
         # Calculate the behavioral descriptor for each genotype
         bd_values = np.array([self.to_phenotype(genotype) for genotype in offline_data_genotypes])
@@ -144,14 +185,14 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         """
         Generate a batch of initial sequences by randomly sample from the offline data.
         @return: list of RNAGenotype
-        """ #todo: when comparing between methods, this should be the same seeds all the
-        # todo: maybe I should take from the ref set instead of the offline data?
+        """
         offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
-        random_indexes = self.rng.choice(offline_data_x.shape[0], size=self.batch_size, replace=False)
+        seed = self.config.initial_population_sample_seed
+        rng = np.random.default_rng(seed)  # Ensures reproducibility, not using the self.rng
+        random_indexes = rng.choice(offline_data_x.shape[0], size=self.batch_size, replace=False)
         initial_sequences = offline_data_x[random_indexes]
         initial_genotypes = [RNAGenotype(seq) for seq in initial_sequences]
-        print("Initial sequences[:5]:\n", [str(s) for s in initial_genotypes[:5]])
-        print("index of initial sequences:\n", random_indexes[:5])
+        logger.info(f"index of initial sequences:\n { random_indexes[:5]}")
         return initial_genotypes
 
     def _nucleotides_frequencies(self, x: RNAGenotype) -> np.ndarray:
@@ -172,6 +213,18 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
 
         return freq
 
+    def _similarity_based_bd(self, x: RNAGenotype) -> np.ndarray:
+        """
+        Calculate the similarity-based behavioral descriptor.
+        :param x: RNAGenotype
+        :return: numpy array with the similarity-based behavioral descriptor
+        """
+        dists = np.array([-Levenshtein.distance(x.sequence, yi.sequence) for yi in self.reference_set])  # distances
+        phi_n = softmax(dists)  # normalized distances via softmax
+        dn = - np.dot(phi_n, dists) / self.R_normalization_constant
+        bd = np.exp(dn) * (phi_n @ self.projection_matrix)
+        return bd
+
     def to_phenotype(self, x: RNAGenotype) -> Phenotype:
         """
         Convert a genotype to a phenotype.
@@ -179,16 +232,17 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         :return: phenotype
         """
         if self.config.bd_type == "nucleotides_frequencies":
-            freq = self._nucleotides_frequencies(x)
-            if self.config.normalize_bd:
-                # normalize according to the min and max values and clip to [0, 1]
-                freq = (freq - self.bd_min) / (self.bd_max - self.bd_min)
-                freq = np.clip(freq, 0, 1)
-            return freq
-        elif self.config.bd_type == "ref_set_similarity": # todo: not implemented yet
-            raise NotImplementedError("ref_set_similarity is not implemented yet")
+            bd = self._nucleotides_frequencies(x)
+        elif self.config.bd_type == "similarity_based":
+            bd = self._similarity_based_bd(x)
         else:
             raise ValueError(f"Unknown bd_type: {self.config.bd_type}. Supported: nucleotides_frequencies")
+
+        if self.config.normalize_bd:
+            # normalize according to the min and max values and clip to [0, 1]
+            bd = (bd - self.bd_min) / (self.bd_max - self.bd_min)
+
+        return bd
 
     def _load_ref_set(self) -> list[RNAGenotype]:
         """
