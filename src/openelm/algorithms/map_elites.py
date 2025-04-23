@@ -819,16 +819,16 @@ class CVTMAPElites(MAPElitesBase):
                 plt.scatter(
                     self.centroids[i, 0],
                     self.centroids[i, 1],
-                    s=150,
+                    s=20,
                     marker="x",
-                    color=color,
+                    c=[[0.5, 0.5, 0.5, 0.2]],
                     label=f"Niche {i}",
                 )
 
                 # get the first two dimensions for each behaviour in the history
                 if self.genomes.history_length > 1:
                     phenotypes = [
-                        g.to_phenotype()[:2]
+                        self.env.to_phenotype(g)[:2]
                         for g in self.genomes.array[:, i]
                         if hasattr(g, "to_phenotype")
                     ]
@@ -839,10 +839,9 @@ class CVTMAPElites(MAPElitesBase):
                         )
                 else:
                     g = self.genomes.array[i]
-                    if hasattr(g, "to_phenotype"):
-                        plt.scatter(
-                            g.to_phenotype()[0],
-                            g.to_phenotype()[1],
+                    if isinstance(g, Genotype):                        plt.scatter(
+                            self.env.to_phenotype(g)[0],
+                            self.env.to_phenotype(g)[1],
                             s=10,
                             marker=".",
                             color=color,
