@@ -1,0 +1,96 @@
+model:
+  output_dir: logs/
+  fp16: true
+  cuda: true
+  gpus: 1
+  seed: null
+  deterministic: false
+  top_p: 0.95
+  temp: 1.1
+  gen_max_len: 512
+  batch_size: 128
+  model_type: bio_random
+  model_path: bio_random
+  logits_only: false
+  do_sample: true
+  num_return_sequences: 1
+  trust_remote_code: true
+  load_in_8bit: false
+  load_in_4bit: false
+  model_name: bio_random
+qd:
+  output_dir: logs/
+  init_steps: 1
+  total_steps: 5000
+  history_length: 1
+  save_history: false
+  save_snapshot_interval: 1000
+  log_snapshot_dir: ''
+  seed: 42
+  save_np_rng_state: false
+  load_np_rng_state: false
+  crossover: false
+  crossover_parents: 2
+  eval_with_oracle_on_snapshot: true
+  number_of_final_solutions: 128
+  eval_with_oracle_interval: 1000
+  qd_name: cvtmapelites
+  n_niches: 2000
+  cvt_samples: 10000
+env:
+  output_dir: logs/
+  timeout: 5.0
+  sandbox: false
+  sandbox_server: http://localhost:5000
+  processes: 1
+  batch_size: 128
+  env_name: qd_bio_rna
+  debug: false
+  seed: 42
+  behavior_space:
+  - - 0.0
+    - 1.0
+  - - 0.0
+    - 1.0
+  - - 0.0
+    - 1.0
+  sequence_length: 50
+  alphabet:
+  - 0
+  - 1
+  - 2
+  - 3
+  bd_type: nucleotides_frequencies
+  size_of_refs_collection: 16384
+  offline_data_dir: C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42
+  offline_data_x_file: x.npy
+  offline_data_y_file: y.npy
+  oracle_model_path: C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig
+  normalize_bd: true
+  fitness_model_config:
+    output_dir: logs/
+    fp16: true
+    cuda: true
+    gpus: 1
+    seed: null
+    deterministic: false
+    top_p: 0.95
+    temp: 1.1
+    gen_max_len: 512
+    batch_size: 128
+    model_type: helix_mrna
+    model_path: C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\logs\helix_mrna_fine_tune\exp_2025-04-21_11-15-25\model
+    logits_only: false
+    do_sample: true
+    num_return_sequences: 1
+    trust_remote_code: true
+    load_in_8bit: false
+    load_in_4bit: false
+    model_name: fitness_helix_mrna
+    alphabet:
+    - A
+    - C
+    - G
+    - U
+output_dir: logs/
+run_name: null
