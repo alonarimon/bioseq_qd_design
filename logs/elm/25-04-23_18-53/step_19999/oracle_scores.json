@@ -1,0 +1,6 @@
+{"oracle_scores_all":
+{
+  "max_score": 0.7563174962997437, "diversity_score": 11.527506815121358, "mean_score": 0.7243699269378605, "novelty_score": 23.75075376884422},
+  "oracle_scores_top_k":
+  {
+    "max_score": 0.7563174962997437, "diversity_score": 10.081815944881889, "mean_score": 0.7429150054231286, "novelty_score": 24.125}}

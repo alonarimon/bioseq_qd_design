@@ -1,0 +1,30 @@
+[2025-04-23 18:53:50,333][deepchem.feat.molecule_featurizers.rdkit_descriptors][WARNING] - No normalization for SPS. Feature removed!
+[2025-04-23 18:53:50,334][deepchem.feat.molecule_featurizers.rdkit_descriptors][WARNING] - No normalization for AvgIpc. Feature removed!
+[2025-04-23 18:53:50,334][deepchem.feat.molecule_featurizers.rdkit_descriptors][WARNING] - No normalization for NumAmideBonds. Feature removed!
+[2025-04-23 18:53:50,334][deepchem.feat.molecule_featurizers.rdkit_descriptors][WARNING] - No normalization for NumAtomStereoCenters. Feature removed!
+[2025-04-23 18:53:50,334][deepchem.feat.molecule_featurizers.rdkit_descriptors][WARNING] - No normalization for NumBridgeheadAtoms. Feature removed!
+[2025-04-23 18:53:50,334][deepchem.feat.molecule_featurizers.rdkit_descriptors][WARNING] - No normalization for NumHeterocycles. Feature removed!
+[2025-04-23 18:53:50,334][deepchem.feat.molecule_featurizers.rdkit_descriptors][WARNING] - No normalization for NumSpiroAtoms. Feature removed!
+[2025-04-23 18:53:50,335][deepchem.feat.molecule_featurizers.rdkit_descriptors][WARNING] - No normalization for NumUnspecifiedAtomStereoCenters. Feature removed!
+[2025-04-23 18:53:50,335][deepchem.feat.molecule_featurizers.rdkit_descriptors][WARNING] - No normalization for Phi. Feature removed!
+[2025-04-23 18:53:59,746][tensorflow][WARNING] - From C:\Users\Alona\anaconda3\envs\OpenELM_GenomicQD\lib\site-packages\tensorflow\python\util\deprecation.py:588: calling function (from tensorflow.python.eager.polymorphic_function.polymorphic_function) with experimental_relax_shapes is deprecated and will be removed in a future version.
+Instructions for updating:
+experimental_relax_shapes is deprecated, use reduce_retracing instead
+[2025-04-23 18:53:59,962][deepchem.models.torch_models][WARNING] - Skipped loading modules with pytorch-geometric dependency, missing a dependency. No module named 'torch_geometric'
+[2025-04-23 18:54:01,982][deepchem.models][WARNING] - Skipped loading modules with pytorch-geometric dependency, missing a dependency. cannot import name 'DMPNN' from 'deepchem.models.torch_models' (C:\Users\Alona\anaconda3\envs\OpenELM_GenomicQD\lib\site-packages\deepchem\models\torch_models\__init__.py)
+[2025-04-23 18:54:01,985][deepchem.models][WARNING] - Skipped loading modules with pytorch-lightning dependency, missing a dependency. No module named 'lightning'
+[2025-04-23 18:54:01,989][deepchem.models][WARNING] - Skipped loading some Jax models, missing a dependency. No module named 'jax'
+[2025-04-23 18:54:06,971][tensorflow][WARNING] - From C:\Users\Alona\anaconda3\envs\OpenELM_GenomicQD\lib\site-packages\tf_keras\src\losses.py:2976: The name tf.losses.sparse_softmax_cross_entropy is deprecated. Please use tf.compat.v1.losses.sparse_softmax_cross_entropy instead.
+
+[2025-04-23 18:54:08,040][root][INFO] - Using device: cuda
+[2025-04-23 18:54:14,907][root][INFO] - Projection matrix W shape: (2048, 2)
+[2025-04-23 18:54:14,907][root][INFO] - R normalization constant: 14.3378899
+[2025-04-23 18:54:53,492][root][INFO] - Behavioral descriptor min: [0.07586334 0.07349675], max: [3.62023814 3.46032756]
+[2025-04-23 18:54:54,184][tensorflow][WARNING] - From C:\Users\Alona\anaconda3\envs\OpenELM_GenomicQD\lib\site-packages\keras\src\backend\tensorflow\core.py:219: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+[2025-04-23 18:54:54,441][root][INFO] - Oracle params:
+rank_correlation: 0.8707294629657666
+model_kwargs: {'hidden_size': 120, 'activation': 'relu', 'kernel_size': 8, 'num_blocks': 2, 'epochs': 5, 'shuffle_buffer': 260000, 'learning_rate': 0.001}
+split_kwargs: {'val_fraction': 0.07142857142, 'subset': None, 'shard_size': 280000, 'to_disk': True, 'disk_target': 'utr/oracle_data/original_v0_minmax_orig/oracle_train_split/split', 'is_absolute': None}
+[2025-04-23 18:55:23,624][root][INFO] - index of initial sequences:
+ [34500 36937 54025  3037 80786]
