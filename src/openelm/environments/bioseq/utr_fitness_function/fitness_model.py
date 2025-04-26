@@ -4,7 +4,7 @@ import torch
 from openelm.configs import ModelConfig, FitnessHelixMRNAConfig, FitnessBioEnsembleConfig
 
 
-class FitnessModel(ABC):
+class FitnessModel(ABC, torch.nn.Module):
     """
     Base class for fitness models.
     """
@@ -13,13 +13,14 @@ class FitnessModel(ABC):
         Initializes the fitness model with the given configuration.
         :param config: Configuration object containing the model parameters.
         """
+        super().__init__()
         self.config = config
         self.device = "cuda" if torch.cuda.is_available() and config.cuda else "cpu"
 
     @abstractmethod
     def __call__(self, sequence: list[int]) -> float:
         """
-        Abstract method to process a batch of sequences and return their scores.
+        Abstract method to a sequence and return a scores.
         :param sequence: Input sequence to be scored.
         :return: Scores for the input sequence.
         """ # todo: move to batches

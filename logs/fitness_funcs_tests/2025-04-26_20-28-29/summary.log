@@ -1,0 +1,26 @@
+2025-04-26 20:28:29,515 - INFO - base_dir: C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design
+2025-04-26 20:28:29,515 - INFO - utr_relabeled_data_path: C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42
+2025-04-26 20:28:29,522 - INFO - val_x shape: (62222, 50)
+2025-04-26 20:28:29,522 - INFO - val_y shape: (62222, 1)
+2025-04-26 20:28:29,522 - INFO - Testing fitness functions...
+2025-04-26 20:28:29,522 - INFO - fitness_configs: FitnessBioEnsembleConfig(output_dir='logs/', fp16=True, cuda=True, gpus=1, seed=None, deterministic=False, top_p=0.95, temp=1.1, gen_max_len=512, batch_size=128, model_type='bio_ensemble', model_path='src/openelm/environments/bioseq/utr_fitness_function/one_shot_scoring_ensemble/scoring_models', logits_only=False, do_sample=True, num_return_sequences=1, trust_remote_code=True, load_in_8bit=False, load_in_4bit=False, model_name='fitness_bio_ensemble', ensemble_size=4, beta=2.0, alphabet_size=4, sequence_length=50)
+2025-04-26 20:28:29,805 - INFO - Using device: cuda
+2025-04-26 20:28:29,806 - INFO - val_x shape: (62222, 50)
+2025-04-26 20:28:29,806 - INFO - val_y shape: (62222, 1)
+2025-04-26 20:31:41,235 - INFO - fitness_func_output shape: (62222,)
+2025-04-26 20:31:41,253 - INFO - 
+Metrics on validation set:
+MSE = 0.008355
+Spearman = 0.767470
+Pearson = 0.823375
+2025-04-26 20:31:41,253 - INFO - Testing fitness functions...
+2025-04-26 20:31:41,254 - INFO - fitness_configs: FitnessHelixMRNAConfig(output_dir='logs/', fp16=True, cuda=True, gpus=1, seed=None, deterministic=False, top_p=0.95, temp=1.1, gen_max_len=512, batch_size=128, model_type='helix_mrna', model_path='C:\\Users\\Alona\\Desktop\\Imperial_college_london\\MSc_project_code\\bioseq_qd_design\\logs\\helix_mrna_fine_tune\\exp_2025-04-21_11-15-25\\model', logits_only=False, do_sample=True, num_return_sequences=1, trust_remote_code=True, load_in_8bit=False, load_in_4bit=False, model_name='fitness_helix_mrna', alphabet=['A', 'C', 'G', 'U'])
+2025-04-26 20:31:43,492 - INFO - Using device: cuda
+2025-04-26 20:31:43,493 - INFO - val_x shape: (62222, 50)
+2025-04-26 20:31:43,493 - INFO - val_y shape: (62222, 1)
+2025-04-26 21:20:50,839 - INFO - fitness_func_output shape: (62222,)
+2025-04-26 21:20:50,865 - INFO - 
+Metrics on validation set:
+MSE = 0.003593
+Spearman = 0.874574
+Pearson = 0.884289

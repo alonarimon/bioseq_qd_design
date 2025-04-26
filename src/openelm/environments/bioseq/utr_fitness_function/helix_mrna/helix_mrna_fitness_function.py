@@ -54,12 +54,12 @@ class HelixMRNAFitnessFunction(FitnessModel):
 
     def __call__(self, sequence: list[int]) -> float:
         """
-        Process a batch of sequences and return their scores.
+        Process a sequences and return a score.
         :param sequence: Input sequence to be scored.
         :return: Scores for the input sequence.
         """ #todo: move to batches
         # Use self.alphabet to convert sequence
-        sequences_str = "".join([self.alphabet[i] for i in sequence])
+        sequences_str = "".join([self.alphabet[i] for i in sequence]) #todo: not efficient,  - better to work only with strings
 
         input_dataset = self.model.process_data([sequences_str])
         with torch.no_grad():

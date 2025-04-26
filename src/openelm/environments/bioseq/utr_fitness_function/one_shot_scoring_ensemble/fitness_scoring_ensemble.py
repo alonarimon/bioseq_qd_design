@@ -13,7 +13,7 @@ def load_scoring_ensemble(seq_len, K, model_dir, device="cuda", ensemble_size=1)
     """
     Loads all .pt (or .pth) models from `model_dir` into a list.
     """
-    ensemble = []
+    ensemble = torch.nn.ModuleList()
     model_fnames = [f for f in os.listdir(model_dir) if f.endswith(".pt") or f.endswith(".pth")]
     model_fnames = sorted(model_fnames)[:ensemble_size]  # limit to ensemble_size models
 
@@ -45,12 +45,12 @@ class FitnessScoringEnsemble(FitnessModel):
             config.model_path, self.device, config.ensemble_size)
         self.beta = config.beta
 
-    def __call__(self, sequences: list[int]) -> float:
+    def __call__(self, sequence: list[int]) -> float:
         """
-        Process a batch of sequences and return their scores.
-        """
+        Process a sequence and return a score.
+        """ #todo: move to batches
         # preprocess sequence
-        torch_seq = torch.tensor(sequences, dtype=torch.float32).unsqueeze(0)
+        torch_seq = torch.tensor(sequence, dtype=torch.float32).unsqueeze(0)
         one_hot = sequence_nuc_to_one_hot(torch_seq)
         log_x = log_interpolated_one_hot(one_hot).to(self.device)
 
@@ -63,4 +63,4 @@ class FitnessScoringEnsemble(FitnessModel):
         mean = np.mean(scores, axis=0)
         std = np.std(scores, axis=0)
 
-        return mean - self.beta * std
+        return float(mean - self.beta * std)
