@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
-import torch
+import pytest
 from scipy.stats import spearmanr, pearsonr
 from sklearn.metrics import mean_squared_error
 from tqdm import tqdm
@@ -41,7 +41,30 @@ console_formatter = logging.Formatter('%(levelname)s - %(message)s')
 console_handler.setFormatter(console_formatter)
 logger.addHandler(console_handler)
 
-def test_fitness_funcs(fitness_configs: ModelConfig, val_x: np.ndarray, val_y: np.ndarray):
+EXPECTED_RESULTS = {
+    "fitness_bio_ensemble": {
+        4: {"mse": 0.007004, "spearman": 0.400000, "pearson": 0.424333}, # first 4 samples
+        None: {"mse": 0.008355, "spearman": 0.767470, "pearson": 0.823375}, # all samples
+    },
+    "fitness_helix_mrna": {
+        4: {"mse": 0.001624, "spearman": 0.800000, "pearson": 0.882930}, # first 4 samples
+        None: {"mse": 0.003593, "spearman": 0.874574, "pearson": 0.884289}, # all samples
+    }
+}
+
+
+@pytest.fixture(scope="module")
+def validation_data_utr():
+    logger.info(f"base_dir: {bioseq_base_dir}")
+    utr_relabeled_data_path = bioseq_base_dir / "design-bench-detached" / "design_bench_data" / "utr" / "oracle_data" / "original_v0_minmax_orig" / "sampled_offline_relabeled_data" / "sampled_data_fraction_1_3_seed_42"
+    logger.info(f"utr_relabeled_data_path: {utr_relabeled_data_path}")
+
+    val_x = np.load(utr_relabeled_data_path / "sampled_validation_x.npy")
+    val_y = np.load(utr_relabeled_data_path / "sampled_validation_y.npy")
+
+    return val_x, val_y
+
+def evaluate_fitness_funcs(fitness_configs: ModelConfig, val_x: np.ndarray, val_y: np.ndarray):
     """
     Test the fitness functions for the given configurations.
     Args:
@@ -71,8 +94,10 @@ def test_fitness_funcs(fitness_configs: ModelConfig, val_x: np.ndarray, val_y: n
         batch_x = val_x_genotypes[batch_start:batch_end]
         fitness_func_output = fitness_func(batch_x)
         outputs.append(fitness_func_output)
-
-    outputs = np.concatenate(outputs, axis=0)
+    if fitness_configs.batch_size > 1:
+        outputs = np.concatenate(outputs, axis=0)
+    else:
+        outputs = np.array(outputs)
     val_y = val_y.squeeze()
     logger.info(f"fitness_func_output shape: {outputs.shape}")
 
@@ -87,24 +112,33 @@ def test_fitness_funcs(fitness_configs: ModelConfig, val_x: np.ndarray, val_y: n
       f"Spearman = {spearman_corr:.6f}\n"
       f"Pearson = {pearson_corr:.6f}")
 
-if __name__ == "__main__":
-    logger.info(f"base_dir: {bioseq_base_dir}")
-    utr_relabeled_data_path = bioseq_base_dir / "design-bench-detached" / "design_bench_data" / "utr" / "oracle_data" / "original_v0_minmax_orig" / "sampled_offline_relabeled_data" / "sampled_data_fraction_1_3_seed_42"
-    logger.info(f"utr_relabeled_data_path: {utr_relabeled_data_path}")
-    val_x = np.load(utr_relabeled_data_path / "sampled_validation_x.npy")
-    val_y = np.load(utr_relabeled_data_path / "sampled_validation_y.npy")
-    logger.info(f"val_x shape: {val_x.shape}")
-    logger.info(f"val_y shape: {val_y.shape}")
+    return mse, spearman_corr, pearson_corr
 
-    # Test the fitness functions
-   # test_fitness_funcs(FitnessBioEnsembleConfig(), val_x, val_y)
-   # test_fitness_funcs(FitnessHelixMRNAConfig(), val_x, val_y)
+@pytest.mark.parametrize("n_samples", [4])  # int for number of samples or None for all
+@pytest.mark.parametrize("config_class", [FitnessBioEnsembleConfig, FitnessHelixMRNAConfig])
+def test_fitness_funcs_on_val(validation_data_utr, config_class, n_samples):
 
-    # costume configs
-    fitness_configs = FitnessBioEnsembleConfig()
-    fitness_configs.beta = 0.0
-    logger.info("fitness ensemble with beta 0.0 and ensemble size 1")
-    fitness_configs.ensemble_size = 1
-    test_fitness_funcs(fitness_configs, val_x, val_y)
+    val_x, val_y = validation_data_utr
+
+    if n_samples is not None:
+        val_x = val_x[:n_samples]
+        val_y = val_y[:n_samples]
+
+    config = config_class()
+
+    logger.info(f"Testing {config.model_name} on {len(val_x)} samples")
+    mse, spearman_corr, pearson_corr = evaluate_fitness_funcs(config, val_x, val_y)
+
+    expected = EXPECTED_RESULTS[config.model_name][n_samples]
+
+    assert mse == pytest.approx(expected["mse"], abs=1e-6)
+    assert spearman_corr == pytest.approx(expected["spearman"], abs=1e-6)
+    assert pearson_corr == pytest.approx(expected["pearson"], abs=1e-6)
+
+    logger.info(f"Test passed for {config.model_name} with {n_samples} samples!")
+
+
+
+
 
 

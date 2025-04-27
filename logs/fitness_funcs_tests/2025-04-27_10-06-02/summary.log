@@ -1,0 +1,28 @@
+2025-04-27 10:06:02,105 - INFO - base_dir: C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design
+2025-04-27 10:06:02,106 - INFO - utr_relabeled_data_path: C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42
+2025-04-27 10:06:02,113 - INFO - Testing fitness_bio_ensemble on 4 samples
+2025-04-27 10:06:02,113 - INFO - Testing fitness functions...
+2025-04-27 10:06:02,113 - INFO - fitness_configs: FitnessBioEnsembleConfig(output_dir='logs/', fp16=True, cuda=True, gpus=1, seed=None, deterministic=False, top_p=0.95, temp=1.1, gen_max_len=512, batch_size=128, model_type='bio_ensemble', model_path='C:\\Users\\Alona\\Desktop\\Imperial_college_london\\MSc_project_code\\bioseq_qd_design\\src\\openelm\\environments\\bioseq\\utr_fitness_function\\one_shot_scoring_ensemble\\scoring_models', logits_only=False, do_sample=True, num_return_sequences=1, trust_remote_code=True, load_in_8bit=False, load_in_4bit=False, model_name='fitness_bio_ensemble', ensemble_size=4, beta=2.0, alphabet_size=4, sequence_length=50)
+2025-04-27 10:06:02,397 - INFO - Using device: cuda
+2025-04-27 10:06:02,397 - INFO - val_x shape: (4, 50)
+2025-04-27 10:06:02,397 - INFO - val_y shape: (4, 1)
+2025-04-27 10:06:04,489 - INFO - fitness_func_output shape: (4,)
+2025-04-27 10:06:04,492 - INFO - 
+Metrics on validation set:
+MSE = 0.007004
+Spearman = 0.400000
+Pearson = 0.424333
+2025-04-27 10:06:04,493 - INFO - Test passed for fitness_bio_ensemble with 4 samples!
+2025-04-27 10:06:04,498 - INFO - Testing fitness_helix_mrna on 4 samples
+2025-04-27 10:06:04,499 - INFO - Testing fitness functions...
+2025-04-27 10:06:04,499 - INFO - fitness_configs: FitnessHelixMRNAConfig(output_dir='logs/', fp16=True, cuda=True, gpus=1, seed=None, deterministic=False, top_p=0.95, temp=1.1, gen_max_len=512, batch_size=1, model_type='helix_mrna', model_path='C:\\Users\\Alona\\Desktop\\Imperial_college_london\\MSc_project_code\\bioseq_qd_design\\logs\\helix_mrna_fine_tune\\exp_2025-04-21_11-15-25\\model', logits_only=False, do_sample=True, num_return_sequences=1, trust_remote_code=True, load_in_8bit=False, load_in_4bit=False, model_name='fitness_helix_mrna')
+2025-04-27 10:06:05,879 - INFO - Using device: cuda
+2025-04-27 10:06:05,880 - INFO - val_x shape: (4, 50)
+2025-04-27 10:06:05,880 - INFO - val_y shape: (4, 1)
+2025-04-27 10:06:06,119 - INFO - fitness_func_output shape: (4,)
+2025-04-27 10:06:06,122 - INFO - 
+Metrics on validation set:
+MSE = 0.001624
+Spearman = 0.800000
+Pearson = 0.882930
+2025-04-27 10:06:06,122 - INFO - Test passed for fitness_helix_mrna with 4 samples!

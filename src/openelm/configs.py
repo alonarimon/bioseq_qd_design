@@ -3,6 +3,9 @@ from typing import Any, Optional
 
 from hydra.core.config_store import ConfigStore
 from omegaconf import MISSING
+from pathlib import Path
+
+bioseq_base_dir = Path(__file__).resolve().parents[2]
 
 
 @dataclass
@@ -30,6 +33,11 @@ class ModelConfig(BaseConfig):
     load_in_8bit: bool = False  # need to install bitsandbytes
     load_in_4bit: bool = False
 
+    def __post_init__(self):
+        model_path = Path(self.model_path)
+        if not model_path.is_absolute():
+            self.model_path = str((bioseq_base_dir / model_path).resolve())
+
 
 @dataclass
 class PromptModelConfig(ModelConfig):
@@ -51,20 +59,19 @@ class BioRandomModelConfig(ModelConfig):
 class FitnessBioEnsembleConfig(ModelConfig):
     model_type: str = "bio_ensemble"  # Can be "hf", "openai", etc
     model_name: str = "fitness_bio_ensemble"
-    model_path: str = r"src/openelm/environments/bioseq/utr_fitness_function/one_shot_scoring_ensemble/scoring_models"  # Path to the scoring model #todo: not absolute path
+    model_path: str = r"src/openelm/environments/bioseq/utr_fitness_function/one_shot_scoring_ensemble/scoring_models"  # Path to the scoring model
     ensemble_size: int = 4 # Number of scoring models to use for fitness evaluation #todo: 18
     beta: float = 2.0  # Penalty term factor
     alphabet_size: int = 4 # Size of the alphabet (e.g., 4 for nucleotides ACGU)
     sequence_length: int = 50 # Length of the sequence to be evaluated
-    batch_size = 128
+    batch_size: int = 128
 
 @dataclass
 class FitnessHelixMRNAConfig(ModelConfig):
     model_type: str = "helix_mrna"
     model_name: str = "fitness_helix_mrna"
-    model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\logs\helix_mrna_fine_tune\exp_2025-04-21_11-15-25\model" #todo
-    alphabet: list[str] = field(default_factory=lambda: ["A", "C", "G", "U"]) # todo: validate mapping
-    batch_size = 1
+    model_path: str = r"logs\helix_mrna_fine_tune\exp_2025-04-21_11-15-25\model"
+    batch_size: int = 1
 
 @dataclass
 class QDConfig(BaseConfig):
@@ -184,17 +191,27 @@ class QDBioRNAEnvConfig(EnvConfig):
         ]
     )
     sequence_length: int = 50
-    alphabet: list[int] = field(default_factory=lambda: [0, 1, 2, 3]) # todo: interoperation
+    alphabet: list[int] = field(default_factory=lambda: [0, 1, 2, 3]) # [A, C, G, U]
     size_of_refs_collection: int =  2048 # Number of reference sequences to use for novelty evaluation and BD
-    offline_data_dir: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42"  # Path to the offline data directory #todo: not absolute path
+    offline_data_dir: str = r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42"  # Path to the offline data directory
     offline_data_x_file: str = "x.npy"  # Name of the offline data X file
     offline_data_y_file: str = "y.npy"  # Name of the offline data Y file
-    oracle_model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig"  # Path to the oracle model #todo: not absolute path
+    oracle_model_path: str = r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig"  # Path to the oracle model
     fitness_model_config: ModelConfig = field(default_factory=lambda: FitnessBioEnsembleConfig())
     bd_type: str = "similarity_based" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred). "similarity_based": The phenotype is a vector of the similarity of the sequence to the offline ref data.
     normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
     distance_normalization_constant: float = 14.3378899  # Constant for distance normalization (for the similarity-based BD). -1 means constant will be automatically calculated from the offline data.
-    initial_population_sample_seed: int = 123  # Path to the initial population file #todo: not absolute path
+    initial_population_sample_seed: int = 123  # initial population sample seed
+
+    def __post_init__(self):
+        path_fields = ['offline_data_dir', 'oracle_model_path']
+        for field_name in path_fields:
+            if hasattr(self, field_name):
+                value = getattr(self, field_name)
+                if isinstance(value, str):
+                    path = Path(value)
+                    if not path.is_absolute():
+                        setattr(self, field_name, str((bioseq_base_dir / path).resolve()))
 
 @dataclass
 class PromptEnvConfig(EnvConfig):

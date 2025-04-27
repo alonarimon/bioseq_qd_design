@@ -20,7 +20,8 @@ class HelixMRNAFitnessFunction(FitnessModel[RNAGenotype]):
         super().__init__(config)
         self.model = self.load_model()  # Load your model here
         self.model.to(self.device)
-        self.alphabet = config.alphabet
+        self.model.eval()
+
 
     def load_model(self):
         """
@@ -62,9 +63,7 @@ class HelixMRNAFitnessFunction(FitnessModel[RNAGenotype]):
         if len(genotypes) > self.config.batch_size:
             raise ValueError(f"Batch size {len(genotypes)} exceeds the configured batch size {self.batch_size}.")
 
-        # Use self.alphabet to convert sequence
         sequences_str = [str(g) for g in genotypes]#todo: not efficient,  - better to work only with strings
-        # todo: maybe not need to convert to str? try
         input_dataset = self.model.process_data(sequences_str)
         with torch.no_grad():
             output = self.model.get_outputs(input_dataset)[0].item()
