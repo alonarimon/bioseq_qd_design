@@ -8,7 +8,7 @@ from sklearn.metrics import mean_squared_error
 from tqdm import tqdm
 
 from openelm.configs import FitnessBioEnsembleConfig, ModelConfig, FitnessHelixMRNAConfig
-from openelm.environments.bioseq.bioseq import logger
+from openelm.environments.bioseq.bioseq import logger, RNAGenotype
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import get_fitness_model
 import logging
 
@@ -56,16 +56,23 @@ def test_fitness_funcs(fitness_configs: ModelConfig, val_x: np.ndarray, val_y: n
     device = 'cuda' if fitness_configs.cuda else 'cpu'
     logger.info(f"Using device: {device}")
     fitness_func.to(device)
-    # val_x = torch.from_numpy(val_x).to(device)
+    val_x_genotypes = [RNAGenotype(sequence=seq) for seq in val_x]
     # val_y = torch.from_numpy(val_y) #todo: need to fix this and make them get tensors?
     logger.info(f"val_x shape: {val_x.shape}")
     logger.info(f"val_y shape: {val_y.shape}")
-    # curently the fitness gets batch size of 1 only # todo
+    # go over batch size
     outputs = []
-    for i in tqdm(range(val_x.shape[0]), desc="Testing fitness functions", unit="sample"):
-        fitness_func_output = fitness_func(val_x[i])
+    number_of_batches = val_x.shape[0] / fitness_func.config.batch_size
+    number_of_batches = int(np.ceil(number_of_batches)) # round up
+    for i in tqdm(range(number_of_batches), desc="Processing batches"):
+        # get the batch
+        batch_start = i * fitness_func.config.batch_size
+        batch_end = (i + 1) * fitness_func.config.batch_size if i < number_of_batches - 1 else val_x.shape[0]
+        batch_x = val_x_genotypes[batch_start:batch_end]
+        fitness_func_output = fitness_func(batch_x)
         outputs.append(fitness_func_output)
-    outputs = np.array(outputs)
+
+    outputs = np.concatenate(outputs, axis=0)
     val_y = val_y.squeeze()
     logger.info(f"fitness_func_output shape: {outputs.shape}")
 
@@ -95,9 +102,7 @@ if __name__ == "__main__":
 
     # costume configs
     fitness_configs = FitnessBioEnsembleConfig()
-    logger.info("fitness ensemble with beta 0.0")
     fitness_configs.beta = 0.0
-    test_fitness_funcs(fitness_configs, val_x, val_y)
     logger.info("fitness ensemble with beta 0.0 and ensemble size 1")
     fitness_configs.ensemble_size = 1
     test_fitness_funcs(fitness_configs, val_x, val_y)

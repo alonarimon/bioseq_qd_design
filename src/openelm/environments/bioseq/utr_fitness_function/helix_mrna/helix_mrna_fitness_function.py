@@ -4,10 +4,11 @@ import torch
 
 from helical.models.helix_mrna import HelixmRNAFineTuningModel, HelixmRNAConfig
 from openelm.configs import FitnessHelixMRNAConfig
+from openelm.environments.bioseq.bioseq import RNAGenotype
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import FitnessModel
 
 
-class HelixMRNAFitnessFunction(FitnessModel):
+class HelixMRNAFitnessFunction(FitnessModel[RNAGenotype]):
     """
     A wrapper class for a fine-tuned helix_mrna fitness function.
     """
@@ -52,16 +53,19 @@ class HelixMRNAFitnessFunction(FitnessModel):
         helix_model.eval()
         return helix_model
 
-    def __call__(self, sequence: list[int]) -> float:
+    def __call__(self, genotypes: list[RNAGenotype]) -> list[float]:
         """
-        Process a sequences and return a score.
-        :param sequence: Input sequence to be scored.
-        :return: Scores for the input sequence.
-        """ #todo: move to batches
-        # Use self.alphabet to convert sequence
-        sequences_str = "".join([self.alphabet[i] for i in sequence]) #todo: not efficient,  - better to work only with strings
+        Process a batch of sequences and return scores.
+        :param genotypes: Input genotypes to be scored.
+        :return: Scores for the input sequences.
+        """ #todo: move to tensors / numpy and not lists?
+        if len(genotypes) > self.config.batch_size:
+            raise ValueError(f"Batch size {len(genotypes)} exceeds the configured batch size {self.batch_size}.")
 
-        input_dataset = self.model.process_data([sequences_str])
+        # Use self.alphabet to convert sequence
+        sequences_str = [str(g) for g in genotypes]#todo: not efficient,  - better to work only with strings
+        # todo: maybe not need to convert to str? try
+        input_dataset = self.model.process_data(sequences_str)
         with torch.no_grad():
             output = self.model.get_outputs(input_dataset)[0].item()
 

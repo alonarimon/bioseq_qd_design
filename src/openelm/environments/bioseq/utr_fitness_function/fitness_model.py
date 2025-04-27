@@ -1,10 +1,13 @@
 from abc import ABC, abstractmethod
+from typing import Generic
+
 import torch
 
 from openelm.configs import ModelConfig, FitnessHelixMRNAConfig, FitnessBioEnsembleConfig
+from openelm.environments.base import GenoType
 
 
-class FitnessModel(ABC, torch.nn.Module):
+class FitnessModel(ABC, torch.nn.Module, Generic[GenoType]):
     """
     Base class for fitness models.
     """
@@ -18,13 +21,15 @@ class FitnessModel(ABC, torch.nn.Module):
         self.device = "cuda" if torch.cuda.is_available() and config.cuda else "cpu"
 
     @abstractmethod
-    def __call__(self, sequence: list[int]) -> float:
+    def __call__(self, genotypes: list[GenoType]) -> list[float]:
         """
-        Abstract method to a sequence and return a scores.
-        :param sequence: Input sequence to be scored.
-        :return: Scores for the input sequence.
-        """ # todo: move to batches
+        Abstract method to process a batch of sequences and return scores.
+        :param genotypes: Input genotypes to be scored.
+        :return: Scores for the input sequences.
+        """
         pass
+
+
 
 
 def get_fitness_model(config: ModelConfig):

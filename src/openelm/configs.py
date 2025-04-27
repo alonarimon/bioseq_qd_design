@@ -56,6 +56,7 @@ class FitnessBioEnsembleConfig(ModelConfig):
     beta: float = 2.0  # Penalty term factor
     alphabet_size: int = 4 # Size of the alphabet (e.g., 4 for nucleotides ACGU)
     sequence_length: int = 50 # Length of the sequence to be evaluated
+    batch_size = 128
 
 @dataclass
 class FitnessHelixMRNAConfig(ModelConfig):
@@ -63,6 +64,7 @@ class FitnessHelixMRNAConfig(ModelConfig):
     model_name: str = "fitness_helix_mrna"
     model_path: str = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\bioseq_qd_design\logs\helix_mrna_fine_tune\exp_2025-04-21_11-15-25\model" #todo
     alphabet: list[str] = field(default_factory=lambda: ["A", "C", "G", "U"]) # todo: validate mapping
+    batch_size = 1
 
 @dataclass
 class QDConfig(BaseConfig):

@@ -4,6 +4,7 @@ import numpy as np
 import torch
 
 from openelm.configs import FitnessBioEnsembleConfig
+from openelm.environments.bioseq.bioseq import RNAGenotype
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import FitnessModel
 from openelm.environments.bioseq.utr_fitness_function.one_shot_scoring_ensemble.scoring_model import ScoringNetwork
 from openelm.environments.bioseq.utr_fitness_function.one_shot_scoring_ensemble.preprocess import sequence_nuc_to_one_hot, log_interpolated_one_hot
@@ -31,7 +32,7 @@ def load_scoring_ensemble(seq_len, K, model_dir, device="cuda", ensemble_size=1)
     return ensemble
 
 
-class FitnessScoringEnsemble(FitnessModel):
+class FitnessScoringEnsemble(FitnessModel[RNAGenotype]):
     """
     A wrapper class for a scoring ensemble that allows for batch processing of sequences.
     """
@@ -45,12 +46,18 @@ class FitnessScoringEnsemble(FitnessModel):
             config.model_path, self.device, config.ensemble_size)
         self.beta = config.beta
 
-    def __call__(self, sequence: list[int]) -> float:
+    def __call__(self, genotypes: list[RNAGenotype]) -> list[float]:
         """
-        Process a sequence and return a score.
-        """ #todo: move to batches
+        Process a batch of sequences and return scores.
+        :param genotypes: Input genotypes to be scored.
+        :return: Scores for the input sequences.
+        """
+        if len(genotypes) > self.config.batch_size:
+            raise ValueError(f"Batch size {len(genotypes)} exceeds the configured batch size {self.config.batch_size}.")
+
         # preprocess sequence
-        torch_seq = torch.tensor(sequence, dtype=torch.float32).unsqueeze(0)
+        sequences = [genotype.sequence for genotype in genotypes] # todo: maybe not efficient?
+        torch_seq = torch.tensor(sequences, dtype=torch.int64)
         one_hot = sequence_nuc_to_one_hot(torch_seq)
         log_x = log_interpolated_one_hot(one_hot).to(self.device)
 
@@ -63,4 +70,4 @@ class FitnessScoringEnsemble(FitnessModel):
         mean = np.mean(scores, axis=0)
         std = np.std(scores, axis=0)
 
-        return float(mean - self.beta * std)
+        return list(mean - self.beta * std)

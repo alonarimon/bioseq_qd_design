@@ -9,21 +9,14 @@ UTR_DATA_DIR = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code
 NUC_D = {0: [1, 0, 0, 0], 1: [0, 1, 0, 0],
          2: [0, 0, 1, 0], 3: [0, 0, 0, 1]}
 
-def sequence_nuc_to_one_hot(sequence):
+def sequence_nuc_to_one_hot(sequences: torch.Tensor):
     """
-    Convert an integers sequence to a one-hot encoded tensor.
-    @param sequence: Nucleotide sequence as integers. shape (batch_size, seq_len)
+    Convert an integers sequences to a one-hot encoded tensor.
+    @param sequences: Nucleotide sequences as integers. shape (batch_size, seq_len)
     @return: One-hot encoded tensor of shape (batch_size, seq_len, 4)
     """
-    # Create an empty tensor to hold the one-hot encoded vectors
-    one_hot = torch.zeros(sequence.shape[0], sequence.shape[1], 4, dtype=torch.float32)
-
-    # Iterate through the sequence and fill the one-hot tensor
-    for i in range(sequence.shape[0]):
-        for j in range(sequence.shape[1]):
-            key = int(sequence[i, j])
-            one_hot[i, j] = torch.tensor(NUC_D[key])
-
+    one_hot = torch.zeros(sequences.shape[0], sequences.shape[1], 4, dtype=torch.float32)
+    one_hot = one_hot.scatter(2, sequences.unsqueeze(2), 1.0)
     return one_hot
 
 def log_interpolated_one_hot(one_hot, C=0.6):
