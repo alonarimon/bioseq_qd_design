@@ -94,10 +94,9 @@ def evaluate_fitness_funcs(fitness_configs: ModelConfig, val_x: np.ndarray, val_
         batch_x = val_x_genotypes[batch_start:batch_end]
         fitness_func_output = fitness_func(batch_x)
         outputs.append(fitness_func_output)
-    if fitness_configs.batch_size > 1:
-        outputs = np.concatenate(outputs, axis=0)
-    else:
-        outputs = np.array(outputs)
+
+    outputs = np.concatenate(outputs, axis=0)
+
     val_y = val_y.squeeze()
     logger.info(f"fitness_func_output shape: {outputs.shape}")
 

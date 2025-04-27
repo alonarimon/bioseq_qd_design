@@ -434,8 +434,9 @@ class MAPElitesBase:
         """
         # `new_individuals` is a list of generation/mutation. We put them
         # into the behavior space one-by-one.
-        for individual in new_individuals:
-            fitness = self.env.fitness(individual)
+        fitness_batch = self.env.fitness_batch(new_individuals)
+        for i, individual in enumerate(new_individuals):
+            fitness = fitness_batch[i]
             if np.isinf(fitness):
                 continue
             phenotype = self.env.to_phenotype(individual)

@@ -105,6 +105,8 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         self.oracle = self._load_oracle()  # Load the oracle model from disk, for final evaluation on the solutions (not used in the optimization process)
         # todo: here they originally had 'del mutation_model'. see if it is needed (and if it does - delete it outside the constructor)
 
+        if self.batch_size > self.fitness_function.config.batch_size:
+            logger.warning(f"Environment batch size {self.batch_size} exceeds the fitness model batch size {self.fitness_function.config.batch_size}.")
     def _get_r_distance_norm_const(self, subsample = False) -> float:
         """
         Calculate the normalization constant for the distance metric.
@@ -287,12 +289,32 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
     def fitness(self, x: RNAGenotype) -> float:
         """
         Evaluate the fitness of the sequence using a list of scoring functions. (scoring ensemble)
-        The fitness is the mean of the scores minus a penalty term.
         :param x: RNAGenotype
         :return: fitness score (float)
         """ # todo: make the fitness function work in batch mode
-        fitness = self.fitness_function(x.sequence)
+        fitness = self.fitness_function([x])
+        fitness = fitness[0]
         return fitness
+
+    def fitness_batch(self, genotypes: list[RNAGenotype]) -> list[float]:
+        """
+        Evaluate the fitness of a batch of sequences using a list of scoring functions. (scoring ensemble)
+        :param genotypes: list of RNAGenotype
+        :return: list of fitness scores (float)
+        """
+        number_of_internal_batches = len(genotypes) / self.fitness_function.config.batch_size
+        number_of_internal_batches = int(np.ceil(number_of_internal_batches))  # round up
+        outputs = []
+        for i in range(number_of_internal_batches):
+            # get the batch
+            batch_start = i * self.fitness_function.config.batch_size
+            batch_end = (i + 1) * self.fitness_function.config.batch_size if i < number_of_internal_batches - 1 else len(genotypes)
+            batch_genotypes = genotypes[batch_start:batch_end]
+            fitness = self.fitness_function(batch_genotypes)
+            outputs.append(fitness)
+
+        outputs = np.concatenate(outputs, axis=0).tolist()
+        return outputs
 
     def eval_with_oracle(self, genotypes=list[RNAGenotype], k=128) -> tuple:
         """

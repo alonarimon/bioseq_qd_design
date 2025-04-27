@@ -67,7 +67,10 @@ class HelixMRNAFitnessFunction(FitnessModel[RNAGenotype]):
         input_dataset = self.model.process_data(sequences_str)
         with torch.no_grad():
             output = self.model.get_outputs(input_dataset)[0].item()
-
+        if self.config.batch_size == 1:
+            output = [output]
+        else:
+            output = output.squeeze().tolist()
         return output
 
 

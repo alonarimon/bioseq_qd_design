@@ -9,6 +9,7 @@ from typing import Generic, Optional, TypeVar, Union
 
 import numpy as np
 import requests
+import logging
 
 from openelm.configs import EnvConfig, ImageEnvConfig, StringEnvConfig
 from openelm.environments.utils import NULL_SEED, get_image_target
@@ -26,6 +27,7 @@ if (
 
 Phenotype = Optional[np.ndarray]
 
+logger = logging.getLogger(__name__)
 
 def ackley(x: np.ndarray) -> np.ndarray:
     d = x.shape[-1]
@@ -95,6 +97,15 @@ class BaseEnvironment(ABC, Generic[GenoType]):
     @abstractmethod
     def fitness(self, x: GenoType) -> float:
         raise NotImplementedError
+
+    def fitness_batch(self, x: list[GenoType]) -> list[float]:
+        """
+        Evaluate the fitness of a batch of genotypes.
+        :param x: List of genotypes to evaluate.
+        :return: List of fitness scores for the genotypes.
+        """
+        logger.warning("not implemented fitness_batch for this env, using fitness instead")
+        return [self.fitness(genotype) for genotype in x]
 
     @abstractmethod
     def eval_with_oracle(self, genotypes = list[GenoType], k=128) -> list[float]:
