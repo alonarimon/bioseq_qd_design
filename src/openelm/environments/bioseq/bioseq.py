@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -14,40 +15,12 @@ from design_bench.oracles.tensorflow import ResNetOracle
 
 from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig
 from openelm.environments.base import BaseEnvironment, Phenotype, Genotype
+from openelm.environments.bioseq.genotypes import RNAGenotype
 from openelm.mutation_model import MutationModel, get_model
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import get_fitness_model
-from openelm.utils.evaluation import evaluate_solutions_set
+from openelm.environments.bioseq.utils.evaluation import evaluate_solutions_set
 
 logger = logging.getLogger()
-
-MAP_INT_TO_LETTER = {
-    0: "A",
-    1: "C",
-    2: "G",
-    3: "U",
-} # todo: check if this is correct
-
-
-class RNAGenotype(Genotype):
-    """
-    A simple genotype class for RNA bioseq generation. (without llms)
-    """
-
-    def __init__(self, sequence: list[int]):
-        self.sequence = sequence
-
-    def to_phenotype(self) -> Optional[Phenotype]:
-        """
-        Convert the genotype to a phenotype.
-        :return: Phenotype representation of the genotype.
-        """
-        raise NotImplementedError("Phenotype conversion is not implemented for RNAGenotype, expect to use the environment's to_phenotype method.")
-
-    def __str__(self):
-        """
-        Convert the genotype to a string representation.
-        """
-        return "".join([MAP_INT_TO_LETTER[letter] for letter in self.sequence])
 
 
 class RNAEvolution(BaseEnvironment[RNAGenotype]):
@@ -316,32 +289,23 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         outputs = np.concatenate(outputs, axis=0).tolist()
         return outputs
 
-    def eval_with_oracle(self, genotypes=list[RNAGenotype], k=128) -> tuple:
+    def eval_with_oracle(self, genotypes=list[RNAGenotype], k=128, save_dir: str | Path = None) -> dict:
         """
         Evaluate a list of genotypes using the oracle model.
         The oracle model is used to evaluate the solutions after the optimization process.
         (not used in the optimization process)
         :param genotypes: list of RNAGenotype
         :param k: number of top solutions to consider for evaluation (w.r.t. the oracle scores)
+        :param save_dir: directory to save the evaluation results and plots
         :return: max, diversity, mean, and novelty scores for all solutions, and for the top k solutions.
         """
-        N = len(genotypes)
-        sequences = [genotype.sequence for genotype in genotypes]
-        refs = [genotype.sequence for genotype in self.reference_set]
-        list_of_solutions_np = np.array(sequences)
-
-        # Evaluate the solutions using the oracle model #todo: switch to eval mode and use no_grad
-        scores = self.oracle.predict(list_of_solutions_np).flatten()
-
-        # calculate scores for all solutions
-        max_all, diversity_all, mean_all, novelty_all = evaluate_solutions_set(sequences, refs, scores)
-        # calculate scores for the top k solutions
-        k = min(k, N)
-        top_k_indexes = np.argsort(scores)[-k:].tolist()
-        top_k_solutions = [sequences[i] for i in top_k_indexes]
-        top_k_scores = [scores[i] for i in top_k_indexes]
-        max_score_top_k, diversity_top_k, mean_top_k, novelty_top_k = evaluate_solutions_set(top_k_solutions, refs, top_k_scores)
-
-        return (max_all, diversity_all, mean_all, novelty_all,
-                max_score_top_k, diversity_top_k, mean_top_k, novelty_top_k)
+        results = evaluate_solutions_set(
+            solutions=genotypes,
+            ref_solutions=self.reference_set,
+            oracle=self.oracle,
+            k=k,
+            plot=(save_dir is not None),
+            save_path=save_dir
+        )
+        return results
 

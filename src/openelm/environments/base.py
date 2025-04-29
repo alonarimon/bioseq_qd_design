@@ -5,6 +5,7 @@ import sys
 import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from pathlib import Path
 from typing import Generic, Optional, TypeVar, Union
 
 import numpy as np
@@ -108,12 +109,13 @@ class BaseEnvironment(ABC, Generic[GenoType]):
         return [self.fitness(genotype) for genotype in x]
 
     @abstractmethod
-    def eval_with_oracle(self, genotypes = list[GenoType], k=128) -> list[float]:
+    def eval_with_oracle(self, genotypes = list[GenoType], k=128, save_dir: str | Path = None) -> dict:
         """
         Evaluate the fitness of a list of genotypes using an oracle.
         :param genotypes: List of genotypes to evaluate.
         :param k: The number of top genotypes to consider. (w.r.t. oracle fitness)
-        :return: List of fitness scores for the genotypes.
+        :param save_dir: Directory to save the results.
+        :return: A dictionary containing the scores of the genotypes set.
         """
         raise NotImplementedError("Oracle evaluation is not implemented for this environment.")
 

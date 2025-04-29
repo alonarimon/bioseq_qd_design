@@ -1,0 +1,245 @@
+import json
+import os
+import pickle
+from pathlib import Path
+
+import Levenshtein
+import numpy as np
+from scipy.spatial.distance import pdist, cosine
+import tensorflow as tf
+import RNA
+
+from openelm.environments.bioseq.genotypes import RNAGenotype
+from openelm.environments.bioseq.utils.debug_utils import loaf_ref_list, load_oracle
+from openelm.utils.plots import plot_distance_histograms
+
+
+def predict_secondary_structure(seq: str) -> str:
+    structure, mfe = RNA.fold(seq)
+    return structure  # dot-bracket notation
+
+
+def extract_oracle_embeddings(list_of_sequences, oracle, layer_name='reshape'):
+    """
+    Extract embeddings from the oracle's hidden layer.
+    """
+    model = oracle.params["model"]
+    embedding_model = tf.keras.Model(
+        inputs=model.input,
+        outputs=model.get_layer(layer_name).output
+    )
+    x_input = oracle.dataset_to_oracle_x(np.array(list_of_sequences))
+    embeddings = embedding_model.predict(x_input, verbose=0)
+    return embeddings
+
+
+def evaluate_solutions_set(oracle, solutions: list[RNAGenotype], ref_solutions: list[RNAGenotype], k: int = 128,
+                           plot: bool = False, save_path: str = None):
+    """
+    Evaluate the solutions using the oracle scores.
+    :param oracle: The oracle to use for evaluation.
+    :param solutions: List of solutions to evaluate.
+    :param ref_solutions: List of reference solutions.
+    :param k: Number of top solutions to consider.
+    :param plot: Whether to plot the results.
+    :param save_path: Path to save the results.
+    :return: Dictionary of all metrics.
+    """
+    sequences = [genotype.sequence for genotype in solutions]
+    sequences_np = np.array(sequences)
+    scores = oracle.predict(sequences_np).flatten()
+
+    results_all = calc_all_metrics(
+        scores, solutions, ref_solutions, oracle
+    )
+
+    # Sort the scores and get the top k solutions
+    sorted_indices = np.argsort(scores)[::-1]
+    top_k_indices = sorted_indices[:k]
+    top_k_solutions = [solutions[i] for i in top_k_indices]
+    top_k_scores = [scores[i] for i in top_k_indices]
+
+    # Calculate metrics for the top k solutions
+    results_top_k = calc_all_metrics(
+        top_k_scores, top_k_solutions, ref_solutions, oracle
+    )
+
+    results = {
+        "all_solutions": {
+            "max_score": results_all["max_score"],
+            "mean_score": results_all["mean_score"],
+            "diversity_score_first_order": results_all["diversity_score_first_order"],
+            "novelty_score_first_order": results_all["novelty_score_first_order"],
+            "diversity_score_second_order": results_all["diversity_score_second_order"],
+            "novelty_score_second_order": results_all["novelty_score_second_order"],
+            "diversity_score_embed": results_all["diversity_score_embed"],
+            "novelty_score_embed": results_all["novelty_score_embed"],
+        },
+        "top_k_solutions": {
+            "max_score": results_top_k["max_score"],
+            "mean_score": results_top_k["mean_score"],
+            "diversity_score_first_order": results_top_k["diversity_score_first_order"],
+            "novelty_score_first_order": results_top_k["novelty_score_first_order"],
+            "diversity_score_second_order": results_top_k["diversity_score_second_order"],
+            "novelty_score_second_order": results_top_k["novelty_score_second_order"],
+            "diversity_score_embed": results_top_k["diversity_score_embed"],
+            "novelty_score_embed": results_top_k["novelty_score_embed"],
+        }
+    }
+
+    if save_path is not None:
+        os.makedirs(save_path, exist_ok=True)
+        results_file_path = os.path.join(save_path, "oracle_evaluation.json")
+        with open(results_file_path, "w") as f:
+            json.dump(results, f, indent=4)
+
+    if plot:
+        # plot the histograms of distances
+        plot_distance_histograms(results_all["internal_distances_first_order"], results_top_k["internal_distances_first_order"],
+                                 title="First Order Internal Distances",
+                                 save_path=os.path.join(save_path, "first_order_internal_distances.png"))
+        plot_distance_histograms(results_all["ref_distances_first_order"], results_top_k["ref_distances_first_order"],
+                                    title="First Order Novelty Distances",
+                                    save_path=os.path.join(save_path, "first_order_ref_distances.png"))
+        plot_distance_histograms(results_all["internal_distances_second_order"], results_top_k["internal_distances_second_order"],
+                                    title="Secondary Structure Internal Distances",
+                                    save_path=os.path.join(save_path, "second_order_internal_distances.png"))
+        plot_distance_histograms(results_all["ref_distances_second_order"], results_top_k["ref_distances_second_order"],
+                                    title="Secondary Structure Novelty Distances",
+                                    save_path=os.path.join(save_path, "second_order_ref_distances.png"))
+        plot_distance_histograms(results_all["internal_distances_embed"], results_top_k["internal_distances_embed"],
+                                    title="Oracle Embedding Internal Distances",
+                                    save_path=os.path.join(save_path, "embedding_internal_distances.png"))
+        plot_distance_histograms(results_all["novelty_distances_embed"], results_top_k["novelty_distances_embed"],
+                                    title="Oracle Embedding Novelty Distances",
+                                    save_path=os.path.join(save_path, "embedding_novelty_distances.png"))
+
+    return results
+
+
+def calc_novelty_diversity_levenstein(solutions: list, ref_solutions: list):
+    """
+    Calculate the diversity and novelty of a set of solutions using Levenshtein distance.
+    :param solutions: List of solutions to evaluate.
+    :param ref_solutions: List of reference solutions.
+    :param scores: List of scores for the solutions.
+    :param secondary: Whether to use secondary-structure solutions.
+    :return: max, diversity, mean, and novelty scores
+    """
+    N = len(solutions)
+    internal_distances = [Levenshtein.distance(solutions[i], solutions[j]) for i in range(N) for j in range(i + 1, N)]
+    diversity_score = np.mean(internal_distances)
+
+    novelty_score = -1
+    if ref_solutions is not None:
+        ref_distances = [min([Levenshtein.distance(s, ref) for ref in ref_solutions]) for s in solutions]
+        novelty_score = np.mean(ref_distances)
+
+    return diversity_score, novelty_score, internal_distances, ref_distances
+
+
+def calc_novelty_diversity_embeddings(oracle_embeddings: list, oracle_embeddings_ref: list):
+    """
+    Calculate the diversity and novelty of a set of solutions using oracle embeddings.
+    :param oracle_embeddings: List of oracle embeddings to evaluate.
+    :param oracle_embeddings_ref: List of reference oracle embeddings.
+    :return: diversity and novelty scores (using cosine distance)
+    """
+    internal_distances = pdist(oracle_embeddings, metric='cosine')
+    diversity_score_embed = np.mean(internal_distances)
+    novelty_distances = []
+    for emb in oracle_embeddings:
+        distances = [cosine(emb, ref_emb) for ref_emb in oracle_embeddings_ref]
+        novelty_distances.append(np.min(distances))
+    novelty_score_embed = np.mean(novelty_distances)
+
+    return diversity_score_embed, novelty_score_embed, internal_distances, novelty_distances
+
+
+def calc_all_metrics(
+        scores: list[float],
+        solutions: list[RNAGenotype],
+        ref_solutions: list[RNAGenotype],
+        oracle,
+):
+    """
+    Calculate all metrics for the given solutions and reference solutions.
+    :param oracle: The oracle to use for evaluation.
+    :param solutions: List of solutions to evaluate.
+    :param ref_solutions: List of reference solutions.
+    :return: Dictionary of all metrics.
+    """
+    # Calculate max, diversity, mean, and novelty scores
+    N = len(solutions)
+    max_score = float(max(scores))
+    mean_score = float(sum(scores) / N)
+    sequences = [genotype.sequence for genotype in solutions]
+    refs_seq = [genotype.sequence for genotype in ref_solutions]
+
+    # first order levenshtein diversity and novelty
+    diversity_score_first_order, novelty_score_first_order, internal_distances_first_order, ref_distances_first_order \
+        = calc_novelty_diversity_levenstein(sequences, refs_seq)
+    # secondary structure diversity and novelty
+    secondary_structure_solutions = [predict_secondary_structure(str(g)) for g in solutions]
+    secondary_structure_ref_solutions = [predict_secondary_structure(str(g)) for g in ref_solutions]
+    diversity_score_second_order, novelty_score_second_order, internal_distances_second_order, \
+        ref_distances_second_order = calc_novelty_diversity_levenstein(secondary_structure_solutions,
+                                                                       secondary_structure_ref_solutions)
+
+    # oracle embedding diversity and novelty
+    oracle_embeddings = extract_oracle_embeddings(sequences, oracle)
+    oracle_embeddings_ref = extract_oracle_embeddings(refs_seq, oracle)
+    diversity_score_embed, novelty_score_embed, internal_distances_embed, novelty_distances_embed = \
+        calc_novelty_diversity_embeddings(oracle_embeddings, oracle_embeddings_ref)
+
+    results = {
+        "max_score": max_score,
+        "mean_score": mean_score,
+        "diversity_score_first_order": diversity_score_first_order,
+        "novelty_score_first_order": novelty_score_first_order,
+        "internal_distances_first_order": internal_distances_first_order,
+        "ref_distances_first_order": ref_distances_first_order,
+        "diversity_score_second_order": diversity_score_second_order,
+        "novelty_score_second_order": novelty_score_second_order,
+        "internal_distances_second_order": internal_distances_second_order,
+        "ref_distances_second_order": ref_distances_second_order,
+        "diversity_score_embed": diversity_score_embed,
+        "novelty_score_embed": novelty_score_embed,
+        "internal_distances_embed": internal_distances_embed,
+        "novelty_distances_embed": novelty_distances_embed
+    }
+
+    return results
+
+if __name__ == '__main__':
+    # Example debug usage
+    # load maps from pkl file
+    bioseq_base_dir = Path(__file__).resolve().parents[5]
+    all_logs_dirs = [
+        bioseq_base_dir / "logs" / "elm" / "25-04-23_11-50" / "step_4999",
+    ]
+    for exp_logs_dir in all_logs_dirs:
+        maps_pkl_file = os.path.join(exp_logs_dir, "maps.pkl")
+        with open(maps_pkl_file, "rb") as f:
+            maps = pickle.load(f)
+        genomes = maps["genomes"]
+        non_zero_genoms = [g for g in genomes if g != 0]
+        print(f"Loaded {len(genomes)} genomes from the maps.")
+        print(f"Number of non-zero genomes: {len(non_zero_genoms)}")
+        # load oracle model
+        ORACLE_NAME = "original_v0_minmax_orig"
+        DATASET_PATH = bioseq_base_dir / "design-bench-detached" / "design_bench_data" / "utr"
+        oracle = load_oracle(DATASET_PATH, ORACLE_NAME)
+        model = oracle.params["model"]  # access the Keras model
+        # for i, layer in enumerate(model.layers):
+        #     output_shape = getattr(layer.output, 'shape', None)
+        #     print(f"Layer {i}: {layer.name}, output shape: {output_shape}")
+        embedding_model = tf.keras.Model(
+            inputs=model.input,
+            outputs=model.get_layer('reshape').output  # layer 21
+        )
+        offline_data_path_x = bioseq_base_dir / "design-bench-detached" / "design_bench_data" / "utr" / "oracle_data" / "original_v0_minmax_orig" / "sampled_offline_relabeled_data" / "sampled_data_fraction_1_3_seed_42"
+        ref_list = loaf_ref_list(os.path.join(offline_data_path_x, "x.npy"), 16384, seed=42)
+        ref_genotypes = [RNAGenotype(seq) for seq in ref_list]
+        save_dir = os.path.join(exp_logs_dir, "debug_distances")
+        evaluate_solutions_set(oracle, non_zero_genoms, ref_genotypes, k=128, plot=True, save_path=save_dir)

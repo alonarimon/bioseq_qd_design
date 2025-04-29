@@ -533,28 +533,10 @@ class MAPElitesBase:
 
         if eval_with_oracle:
             non_zero_genomes = self.genomes.array[self.nonzero.array]
-            max_score_all, diversity_score_all, mean_score_all, novelty_score_all, \
-                max_score_top_k, diversity_score_top_k, mean_score_top_k, novelty_score_top_k = (
-                self.env.eval_with_oracle(non_zero_genomes, k=self.config.number_of_final_solutions))
-            results = {
-                "oracle_scores_all":{
-                    "max_score": max_score_all,
-                    "diversity_score": diversity_score_all,
-                    "mean_score": mean_score_all,
-                    "novelty_score": novelty_score_all,
-                },
-                "oracle_scores_top_k":{
-                    "max_score": max_score_top_k,
-                    "diversity_score": diversity_score_top_k,
-                    "mean_score": mean_score_top_k,
-                    "novelty_score": novelty_score_top_k,
-                },
-            }
-            with open((output_folder / "oracle_scores.json"), "w") as f:
-                json.dump(results, f)
-            f.close()
+            os.makedirs(output_folder / "oracle_evaluations", exist_ok=True)
+            _ = self.env.eval_with_oracle(non_zero_genomes, k=self.config.number_of_final_solutions,
+                                                save_dir=output_folder / "oracle_evaluations") #todo: maybe make this function fot part of the env, and for that remove all envs that arnt bioseq
 
-   
     def plot_fitness(self):
         import matplotlib.pyplot as plt
 

@@ -1,6 +1,7 @@
 import os
 from typing import Dict, List
 
+import numpy as np
 from matplotlib import pyplot as plt
 
 
@@ -42,3 +43,26 @@ def plot_learning_curves(
         os.makedirs(save_dir, exist_ok=True)
         plt.savefig(os.path.join(save_dir, f"{fig_name}_{model_id}.png"))
     # plt.show()
+
+
+def plot_distance_histograms(
+        all_distances,
+        topk_distances,
+        title,
+        save_path
+):
+    """Plot histograms of distances from real, ref, and top-k solutions."""
+    plt.figure(figsize=(7, 5))
+    bins = np.linspace(0, max(np.max(all_distances), np.max(topk_distances)), 30)
+
+    plt.hist(all_distances, bins=bins, alpha=0.5, label='All Solutions', color='blue', edgecolor='black')
+    plt.hist(topk_distances, bins=bins, alpha=0.5, label=f'Top K Solutions', color='orange', edgecolor='black')
+
+    plt.title(title)
+    plt.xlabel('Pairwise Distance')
+    plt.ylabel('Frequency')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
