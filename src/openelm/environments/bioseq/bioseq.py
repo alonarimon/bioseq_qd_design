@@ -289,7 +289,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         outputs = np.concatenate(outputs, axis=0).tolist()
         return outputs
 
-    def eval_with_oracle(self, genotypes=list[RNAGenotype], k=128, save_dir: str | Path = None) -> dict:
+    def eval_with_oracle(self, genotypes: list[RNAGenotype], downsampled_genotypes: list[RNAGenotype] = None, k=128, save_dir: str | Path = None) -> dict:
         """
         Evaluate a list of genotypes using the oracle model.
         The oracle model is used to evaluate the solutions after the optimization process.
@@ -301,6 +301,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         """
         results = evaluate_solutions_set(
             solutions=genotypes,
+            downsampled_solutions=downsampled_genotypes,
             ref_solutions=self.reference_set,
             oracle=self.oracle,
             k=k,

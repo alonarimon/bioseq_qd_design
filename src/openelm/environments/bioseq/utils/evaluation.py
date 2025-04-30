@@ -33,13 +33,17 @@ def extract_oracle_embeddings(list_of_sequences, oracle, layer_name='reshape'):
     return embeddings
 
 
-def evaluate_solutions_set(oracle, solutions: list[RNAGenotype], ref_solutions: list[RNAGenotype], k: int = 128,
+def evaluate_solutions_set(oracle, solutions: list[RNAGenotype],
+                           ref_solutions: list[RNAGenotype],
+                           downsampled_solutions: list[RNAGenotype],
+                           k: int = 128,
                            plot: bool = False, save_path: str = None):
     """
     Evaluate the solutions using the oracle scores.
     :param oracle: The oracle to use for evaluation.
     :param solutions: List of solutions to evaluate.
     :param ref_solutions: List of reference solutions.
+    :param downsampled_solutions: List of down-sampled solutions
     :param k: Number of top solutions to consider.
     :param plot: Whether to plot the results.
     :param save_path: Path to save the results.
@@ -64,6 +68,11 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype], ref_solutions: 
         top_k_scores, top_k_solutions, ref_solutions, oracle
     )
 
+    # Calculate metrics for the downsampled solutions if provided
+    downsampled_scores = oracle.predict(np.array([genotype.sequence for genotype in downsampled_solutions])).flatten()
+    results_downsampled = calc_all_metrics(
+        downsampled_scores, downsampled_solutions, ref_solutions, oracle
+    )
     results = {
         "all_solutions": {
             "max_score": results_all["max_score"],
@@ -84,6 +93,16 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype], ref_solutions: 
             "novelty_score_second_order": results_top_k["novelty_score_second_order"],
             "diversity_score_embed": results_top_k["diversity_score_embed"],
             "novelty_score_embed": results_top_k["novelty_score_embed"],
+        },
+        "downsampled_solutions": {
+            "max_score": results_downsampled["max_score"],
+            "mean_score": results_downsampled["mean_score"],
+            "diversity_score_first_order": results_downsampled["diversity_score_first_order"],
+            "novelty_score_first_order": results_downsampled["novelty_score_first_order"],
+            "diversity_score_second_order": results_downsampled["diversity_score_second_order"],
+            "novelty_score_second_order": results_downsampled["novelty_score_second_order"],
+            "diversity_score_embed": results_downsampled["diversity_score_embed"],
+            "novelty_score_embed": results_downsampled["novelty_score_embed"],
         }
     }
 
@@ -94,26 +113,14 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype], ref_solutions: 
             json.dump(results, f, indent=4)
 
     if plot:
-        # plot the histograms of distances
-        plot_distance_histograms(results_all["internal_distances_first_order"], results_top_k["internal_distances_first_order"],
-                                 title="First Order Internal Distances",
-                                 save_path=os.path.join(save_path, "first_order_internal_distances.png"))
-        plot_distance_histograms(results_all["ref_distances_first_order"], results_top_k["ref_distances_first_order"],
-                                    title="First Order Novelty Distances",
-                                    save_path=os.path.join(save_path, "first_order_ref_distances.png"))
-        plot_distance_histograms(results_all["internal_distances_second_order"], results_top_k["internal_distances_second_order"],
-                                    title="Secondary Structure Internal Distances",
-                                    save_path=os.path.join(save_path, "second_order_internal_distances.png"))
-        plot_distance_histograms(results_all["ref_distances_second_order"], results_top_k["ref_distances_second_order"],
-                                    title="Secondary Structure Novelty Distances",
-                                    save_path=os.path.join(save_path, "second_order_ref_distances.png"))
-        plot_distance_histograms(results_all["internal_distances_embed"], results_top_k["internal_distances_embed"],
-                                    title="Oracle Embedding Internal Distances",
-                                    save_path=os.path.join(save_path, "embedding_internal_distances.png"))
-        plot_distance_histograms(results_all["novelty_distances_embed"], results_top_k["novelty_distances_embed"],
-                                    title="Oracle Embedding Novelty Distances",
-                                    save_path=os.path.join(save_path, "embedding_novelty_distances.png"))
-
+        for key in ["internal_distances_first_order", "ref_distances_first_order",
+                     "internal_distances_second_order", "ref_distances_second_order",
+                     "internal_distances_embed", "novelty_distances_embed"]:
+            plot_distance_histograms(all_distances=results_all[key],
+                                     topk_distances=results_top_k[key],
+                                     downsampled_distances=results_downsampled[key],
+                                     title=key.replace("_", " ").title(),
+                                     save_path=os.path.join(save_path, f"{key}.png"))
     return results
 
 

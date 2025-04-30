@@ -2,6 +2,7 @@ import json
 import os
 import pickle
 from collections import defaultdict
+from copy import deepcopy
 from pathlib import Path
 from typing import Optional
 
@@ -410,13 +411,26 @@ class MAPElitesBase:
                 and n_steps != 0
                 and n_steps % self.save_snapshot_interval == 0
             ):
-                self.save_results(step=n_steps,
-                                  eval_with_oracle=(self.config.eval_with_oracle_on_snapshot and
-                                                    n_steps % self.config.eval_with_oracle_interval == 0))
+                self.save_results(step=n_steps)
 
+        # save and visualize the final results
         self.current_max_genome = max_genome
-        self.save_results(step=n_steps, eval_with_oracle=self.config.eval_with_oracle_on_snapshot)
+        self.save_results(step=n_steps)
         self.visualize()
+
+        # save and visualize the downsampled map
+        downsampled_solution = self._downsample_map_elites(self.config.number_of_final_solutions)
+        downsampled_solution.save_results(step=n_steps)
+        downsampled_solution.visualize()
+
+        # evaluate with oracle if requested (both original and downsampled)
+        if self.config.eval_with_oracle:
+            _ = self.env.eval_with_oracle(
+                genotypes=self.genomes.array[self.nonzero.array],
+                downsampled_genotypes=downsampled_solution.genomes.array[downsampled_solution.nonzero.array],
+                k=self.config.number_of_final_solutions,
+                save_dir=Path(self.config.output_dir) / "oracle_evaluations",
+            )
         return str(max_genome)
 
     def update_map(self, new_individuals, max_genome, max_fitness):
@@ -492,7 +506,7 @@ class MAPElitesBase:
         """
         return self.fitnesses.qd_score
 
-    def save_results(self, step: int, eval_with_oracle: bool = False):
+    def save_results(self, step: int):
         # create folder for dumping results and metadata
         output_folder = Path(self.config.output_dir) / f"step_{step}"
         os.makedirs(output_folder, exist_ok=True)
@@ -531,11 +545,6 @@ class MAPElitesBase:
             json.dump(tmp_config, f)
         f.close()
 
-        if eval_with_oracle:
-            non_zero_genomes = self.genomes.array[self.nonzero.array]
-            os.makedirs(output_folder / "oracle_evaluations", exist_ok=True)
-            _ = self.env.eval_with_oracle(non_zero_genomes, k=self.config.number_of_final_solutions,
-                                                save_dir=output_folder / "oracle_evaluations") #todo: maybe make this function fot part of the env, and for that remove all envs that arnt bioseq
 
     def plot_fitness(self):
         import matplotlib.pyplot as plt
@@ -612,6 +621,14 @@ class MAPElitesBase:
         save_path: str = self.config.output_dir
         plt.savefig(f"{save_path}/MAPElites_individuals.png")
 
+    def _downsample_map_elites(self, new_num_cells: int):
+        """
+        Downsample a MAP-Elites repertoire into a smaller MAP-Elites repertoire.
+        This function initializes a new MAPElites instance without changing the original.
+        """
+        return self #todo: implement for regular MAPElites
+
+
 
 class MAPElites(MAPElitesBase):
     """
@@ -679,6 +696,7 @@ class CVTMAPElites(MAPElitesBase):
         self,
         env,
         config: CVTMAPElitesConfig,
+        data_to_init: Optional[list[Genotype]] = None,
         *args,
         **kwargs,
     ):
@@ -696,15 +714,20 @@ class CVTMAPElites(MAPElitesBase):
         self.n_niches: int = config.n_niches
         super().__init__(env=env, config=config, *args, **kwargs)
 
-    def _init_discretization(self):
+    def _init_discretization(self, data_to_init: Optional[list[Genotype]] = None):
         """Discretize behaviour space using CVT."""
-        # lower and upper bounds for each dimension
-        low = self.env.behavior_space[0]
-        high = self.env.behavior_space[1]
+        if data_to_init is not None:
+            # use the provided data to initialize the CVT
+            points = np.array([self.env.to_phenotype(g) for g in data_to_init])
+            self.cvt_samples = len(points)
+        else:
+            # lower and upper bounds for each dimension
+            low = self.env.behavior_space[0]
+            high = self.env.behavior_space[1]
 
-        points = np.zeros((self.cvt_samples, self.env.behavior_ndim))
-        for i in range(self.env.behavior_ndim):
-            points[:, i] = self.rng.uniform(low[i], high[i], size=self.cvt_samples)
+            points = np.zeros((self.cvt_samples, self.env.behavior_ndim))
+            for i in range(self.env.behavior_ndim):
+                points[:, i] = self.rng.uniform(low[i], high[i], size=self.cvt_samples)
 
         k_means = KMeans(init="k-means++", n_init="auto", n_clusters=self.n_niches)
         k_means.fit(points)
@@ -749,9 +772,9 @@ class CVTMAPElites(MAPElitesBase):
                 plt.scatter(
                     self.centroids[i, 0],
                     self.centroids[i, 1],
-                    s=150,
+                    s=50,
                     marker="x",
-                    color=color,
+                    c=[[0.5, 0.5, 0.5, 0.2]],  # light gray with alpha
                     label=f"Niche {i}",
                 )
                 plt.scatter(
@@ -772,9 +795,9 @@ class CVTMAPElites(MAPElitesBase):
                     self.centroids[i, 0],
                     self.centroids[i, 1],
                     self.centroids[i, 2],
-                    s=150,
+                    s=50,
                     marker="x",
-                    c=[color],
+                    c=[[0.5, 0.5, 0.5, 0.2]],  # light gray with alpha
                     label=f"Niche {i}",
                 )
                 ax.scatter(
@@ -789,6 +812,7 @@ class CVTMAPElites(MAPElitesBase):
             print("Not enough dimensions to plot centroids")
             return
         save_path: str = self.config.output_dir
+        os.makedirs(save_path, exist_ok=True)
         plt.savefig(f"{save_path}/MAPElites_centroids.png")
 
     def plot_behaviour_space(self):
@@ -887,3 +911,39 @@ class CVTMAPElites(MAPElitesBase):
             return
         save_path: str = self.config.output_dir
         plt.savefig(f"{save_path}/MAPElites_behaviour_history.png")
+
+    def _downsample_map_elites(self, new_num_cells: int) -> MAPElitesBase:
+        """
+        Downsample a MAP-Elites repertoire into a smaller CVT-based repertoire.
+        This function initializes a new CVTMAPElites instance without changing the original.
+        """
+        # Extract original genotypes and phenotypes
+        original_genotypes = [g for g in self.genomes.array.flatten() if g != 0]
+        original_phenotypes = [self.env.to_phenotype(g) for g in original_genotypes]
+
+        # Initialize a new CVT MAP-Elites instance with downsampled centroids
+        downsampled_config = deepcopy(self.config)
+        downsampled_config.cvt_samples=len(original_genotypes)
+        downsampled_config.n_niches = new_num_cells
+        downsampled_config.output_dir = os.path.join(
+            self.config.output_dir, f"downsampled_{new_num_cells}"
+        )
+
+        downsampled_map = CVTMAPElites(
+            env=self.env,
+            config=downsampled_config,
+            data_to_init=original_genotypes,
+        )
+
+        # Insert solutions from original map into the new downsampled map
+        for genotype, phenotype in zip(original_genotypes, original_phenotypes):
+            map_ix = downsampled_map.to_mapindex(phenotype)
+            if map_ix is not None:
+                fitness = downsampled_map.env.fitness(genotype)
+                if fitness > downsampled_map.fitnesses[map_ix]:
+                    downsampled_map.fitnesses[map_ix] = fitness
+                    downsampled_map.genomes[map_ix] = genotype
+                    downsampled_map.nonzero[map_ix] = True
+
+        return downsampled_map
+

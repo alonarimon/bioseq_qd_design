@@ -109,14 +109,15 @@ class BaseEnvironment(ABC, Generic[GenoType]):
         return [self.fitness(genotype) for genotype in x]
 
     @abstractmethod
-    def eval_with_oracle(self, genotypes = list[GenoType], k=128, save_dir: str | Path = None) -> dict:
+    def eval_with_oracle(self, genotypes: list[GenoType], downsampled_genotypes: list[GenoType] = None, k=128, save_dir: str | Path = None) -> dict:
         """
         Evaluate the fitness of a list of genotypes using an oracle.
         :param genotypes: List of genotypes to evaluate.
+        :param downsampled_genotypes: List of downsampled genotypes to evaluate. (optional)
         :param k: The number of top genotypes to consider. (w.r.t. oracle fitness)
         :param save_dir: Directory to save the results.
         :return: A dictionary containing the scores of the genotypes set.
-        """
+        """ #todo: move this to the map-elites level
         raise NotImplementedError("Oracle evaluation is not implemented for this environment.")
 
     @property

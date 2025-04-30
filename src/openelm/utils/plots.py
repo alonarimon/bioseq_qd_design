@@ -48,6 +48,7 @@ def plot_learning_curves(
 def plot_distance_histograms(
         all_distances,
         topk_distances,
+        downsampled_distances,
         title,
         save_path
 ):
@@ -57,6 +58,7 @@ def plot_distance_histograms(
 
     plt.hist(all_distances, bins=bins, alpha=0.5, label='All Solutions', color='blue', edgecolor='black')
     plt.hist(topk_distances, bins=bins, alpha=0.5, label=f'Top K Solutions', color='orange', edgecolor='black')
+    plt.hist(downsampled_distances, bins=bins, alpha=0.5, label='Downsampled Solutions', color='green', edgecolor='black')
 
     plt.title(title)
     plt.xlabel('Pairwise Distance')
