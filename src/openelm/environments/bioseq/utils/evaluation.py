@@ -10,8 +10,8 @@ import tensorflow as tf
 import RNA
 
 from openelm.environments.bioseq.genotypes import RNAGenotype
-from openelm.environments.bioseq.utils.debug_utils import loaf_ref_list, load_oracle
-from openelm.utils.plots import plot_distance_histograms
+from openelm.environments.bioseq.utils.debug_utils import loaf_ref_list, load_oracle, downsample_solutions
+from openelm.utils.plots import plot_distance_histograms, plot_distance_histograms_only_k
 
 
 def predict_secondary_structure(seq: str) -> str:
@@ -111,6 +111,13 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype],
         results_file_path = os.path.join(save_path, "oracle_evaluation.json")
         with open(results_file_path, "w") as f:
             json.dump(results, f, indent=4)
+        # save all the distance to a pickel file
+        distances_file_path = os.path.join(save_path, "distances.pkl")
+        with open(distances_file_path, "wb") as f:
+            pickle.dump({
+                'results_all': results_all,
+                'results_top_k': results_top_k,
+                'results_downsampled': results_downsampled}, f)
 
     if plot:
         for key in ["internal_distances_first_order", "ref_distances_first_order",
@@ -121,6 +128,11 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype],
                                      downsampled_distances=results_downsampled[key],
                                      title=key.replace("_", " ").title(),
                                      save_path=os.path.join(save_path, f"{key}.png"))
+            plot_distance_histograms_only_k(topk_distances=results_top_k[key],
+                                            downsampled_distances=results_downsampled[key],
+                                            title=key.replace("_", " ").title(),
+                                            save_path=os.path.join(save_path, f"{key}_only_k.png"))
+
     return results
 
 
@@ -223,7 +235,10 @@ if __name__ == '__main__':
     # load maps from pkl file
     bioseq_base_dir = Path(__file__).resolve().parents[5]
     all_logs_dirs = [
-        bioseq_base_dir / "logs" / "elm" / "25-04-23_11-50" / "step_4999",
+        bioseq_base_dir / "logs" / "elm" / "25-04-21_15-44" / "step_4999",
+        bioseq_base_dir / "logs" / "elm" / "25-04-16_15-09" / "step_19999",
+        bioseq_base_dir / "logs" / "elm" / "25-04-16_10-50" / "step_19999",
+        bioseq_base_dir / "logs" / "elm" / "25-04-15_19-05" / "step_99999",
     ]
     for exp_logs_dir in all_logs_dirs:
         maps_pkl_file = os.path.join(exp_logs_dir, "maps.pkl")
@@ -248,5 +263,11 @@ if __name__ == '__main__':
         offline_data_path_x = bioseq_base_dir / "design-bench-detached" / "design_bench_data" / "utr" / "oracle_data" / "original_v0_minmax_orig" / "sampled_offline_relabeled_data" / "sampled_data_fraction_1_3_seed_42"
         ref_list = loaf_ref_list(os.path.join(offline_data_path_x, "x.npy"), 16384, seed=42)
         ref_genotypes = [RNAGenotype(seq) for seq in ref_list]
-        save_dir = os.path.join(exp_logs_dir, "debug_distances")
-        evaluate_solutions_set(oracle, non_zero_genoms, ref_genotypes, k=128, plot=True, save_path=save_dir)
+        save_dir = os.path.join(exp_logs_dir, "debug_distances2")
+        downsampled_map = downsample_solutions(genomes=non_zero_genoms, k=128, save_dir=save_dir)
+
+        evaluate_solutions_set(oracle=oracle,
+                               solutions=non_zero_genoms,
+                               ref_solutions=ref_genotypes,
+                               downsampled_solutions=downsampled_map.genomes.array[downsampled_map.nonzero.array],
+                               k=128, plot=True, save_path=save_dir)

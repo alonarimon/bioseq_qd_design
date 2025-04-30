@@ -68,3 +68,24 @@ def plot_distance_histograms(
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
+
+def plot_distance_histograms_only_k(
+        topk_distances,
+        downsampled_distances,
+        title,
+        save_path
+):
+    plt.figure(figsize=(7, 5))
+    bins = np.linspace(0, max(np.max(topk_distances), np.max(downsampled_distances)), 30)
+
+    plt.hist(topk_distances, bins=bins, alpha=0.5, label=f'Top K Solutions', color='orange', edgecolor='black')
+    plt.hist(downsampled_distances, bins=bins, alpha=0.5, label='Downsampled Solutions', color='green', edgecolor='black')
+
+    plt.title(title)
+    plt.xlabel('Pairwise Distance')
+    plt.ylabel('Frequency')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
