@@ -2,7 +2,7 @@ import json
 import os
 import pickle
 from pathlib import Path
-
+import logging
 import Levenshtein
 import numpy as np
 from scipy.spatial.distance import pdist, cosine
@@ -13,6 +13,7 @@ from openelm.environments.bioseq.genotypes import RNAGenotype
 from openelm.environments.bioseq.utils.debug_utils import loaf_ref_list, load_oracle, downsample_solutions
 from openelm.utils.plots import plot_distance_histograms, plot_distance_histograms_only_k
 
+logger = logging.getLogger(__name__)
 
 def predict_secondary_structure(seq: str) -> str:
     structure, mfe = RNA.fold(seq)
@@ -49,6 +50,9 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype],
     :param save_path: Path to save the results.
     :return: Dictionary of all metrics.
     """
+    logger.info(f"Evaluating {len(solutions)} genomes and {len(downsampled_solutions)} down-sampled genomes against the oracle and reference set.")
+
+
     sequences = [genotype.sequence for genotype in solutions]
     sequences_np = np.array(sequences)
     scores = oracle.predict(sequences_np).flatten()
@@ -73,6 +77,7 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype],
     results_downsampled = calc_all_metrics(
         downsampled_scores, downsampled_solutions, ref_solutions, oracle
     )
+
     results = {
         "all_solutions": {
             "max_score": results_all["max_score"],
@@ -112,7 +117,7 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype],
         with open(results_file_path, "w") as f:
             json.dump(results, f, indent=4)
         # save all the distance to a pickel file
-        distances_file_path = os.path.join(save_path, "distances.pkl")
+        distances_file_path = os.path.join(save_path, "results.pkl")
         with open(distances_file_path, "wb") as f:
             pickle.dump({
                 'results_all': results_all,
@@ -235,6 +240,7 @@ if __name__ == '__main__':
     # load maps from pkl file
     bioseq_base_dir = Path(__file__).resolve().parents[5]
     all_logs_dirs = [
+        bioseq_base_dir / "logs" / "elm" / "25-04-23_18-53" / "step_19999",
         bioseq_base_dir / "logs" / "elm" / "25-04-21_15-44" / "step_4999",
         bioseq_base_dir / "logs" / "elm" / "25-04-16_15-09" / "step_19999",
         bioseq_base_dir / "logs" / "elm" / "25-04-16_10-50" / "step_19999",
@@ -263,11 +269,12 @@ if __name__ == '__main__':
         offline_data_path_x = bioseq_base_dir / "design-bench-detached" / "design_bench_data" / "utr" / "oracle_data" / "original_v0_minmax_orig" / "sampled_offline_relabeled_data" / "sampled_data_fraction_1_3_seed_42"
         ref_list = loaf_ref_list(os.path.join(offline_data_path_x, "x.npy"), 16384, seed=42)
         ref_genotypes = [RNAGenotype(seq) for seq in ref_list]
-        save_dir = os.path.join(exp_logs_dir, "debug_distances2")
-        downsampled_map = downsample_solutions(genomes=non_zero_genoms, k=128, save_dir=save_dir)
+        save_dir = os.path.join(exp_logs_dir, "debug_distances")
+        downsampled_genoms = downsample_solutions(genomes=non_zero_genoms, k=128, save_dir=save_dir)
+        logging.info(f"Evaluating {len(non_zero_genoms)} genomes and {len(downsampled_genoms)} down-sampled genomes against the oracle and reference set.")
 
         evaluate_solutions_set(oracle=oracle,
                                solutions=non_zero_genoms,
                                ref_solutions=ref_genotypes,
-                               downsampled_solutions=downsampled_map.genomes.array[downsampled_map.nonzero.array],
+                               downsampled_solutions=downsampled_genoms,
                                k=128, plot=True, save_path=save_dir)

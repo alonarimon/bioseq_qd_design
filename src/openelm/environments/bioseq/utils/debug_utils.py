@@ -1,6 +1,6 @@
 import os
 import numpy as np
-
+import logging
 
 from design_bench.datasets.discrete_dataset import DiscreteDataset
 from design_bench.disk_resource import DiskResource
@@ -13,6 +13,8 @@ from openelm.mutation_model import RandomSequenceMutator
 
 ORACLE_NAME = "original_v0_minmax_orig"
 DATASET_PATH = r"/design-bench-detached/design_bench_data/utr"
+
+logger = logging.getLogger(__name__)
 
 def load_oracle(dataset_path, oracle_name):
     oracle_data_path = os.path.join(dataset_path, "oracle_data")
@@ -95,4 +97,20 @@ def downsample_solutions(genomes, k, save_dir):
                 downsampled_map.genomes[map_ix] = genotype
                 downsampled_map.nonzero[map_ix] = True
 
-    return downsampled_map
+    downdampled_genomes = downsampled_map.genomes.array[downsampled_map.nonzero.array]
+    # make sure we have enough solutions after down-sampling
+    if len(downdampled_genomes) < k:
+        logger.warning(f"Downsampled map has only {len(downdampled_genomes)} solutions, "
+                       f"while {k} were requested. Sampling more solutions randomly from the map.")
+        has_enough_solutions = (len(genomes) >= k)
+        if not has_enough_solutions:
+            logger.warning(
+                f"Map has only {len(genomes)} solutions, while {k} were requested."
+                f" Sampling more solutions randomly from the map.")
+        for i in range((k - len(downdampled_genomes))):
+            map_ix = np.random.choice(np.arange(len(genomes)), size=1)[0]
+            while genomes[map_ix] in downdampled_genomes and has_enough_solutions:
+                map_ix = np.random.choice(np.arange(len(genomes)), size=1)[0]
+            downdampled_genomes = np.append(downdampled_genomes, genomes[map_ix])
+
+    return downdampled_genomes

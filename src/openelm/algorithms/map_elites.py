@@ -1,6 +1,7 @@
 import json
 import os
 import pickle
+import logging
 from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
@@ -16,6 +17,8 @@ from openelm.environments import BaseEnvironment, Genotype
 Phenotype = Optional[np.ndarray]
 MapIndex = Optional[tuple]
 
+logger = logging.getLogger(__name__)
+
 
 class Map:
     """
@@ -25,11 +28,11 @@ class Map:
     """
 
     def __init__(
-        self,
-        dims: tuple,
-        fill_value: float,
-        dtype: type = np.float32,
-        history_length: int = 1,
+            self,
+            dims: tuple,
+            fill_value: float,
+            dtype: type = np.float32,
+            history_length: int = 1,
     ):
         """
         Class to represent a map of any dimensionality, backed by a numpy array.
@@ -85,9 +88,9 @@ class Map:
         insert_idx = np.where(self.array[indices_at_bin] < value)[0][-1]
         new_bin_fitnesses = np.concatenate(
             (
-                self.array[indices_at_bin][1 : insert_idx + 1],
+                self.array[indices_at_bin][1: insert_idx + 1],
                 np.array([value]),
-                self.array[indices_at_bin][insert_idx + 1 :],
+                self.array[indices_at_bin][insert_idx + 1:],
             )
         )
         self.array[indices_at_bin] = new_bin_fitnesses
@@ -97,9 +100,9 @@ class Map:
         indices_at_bin = (slice(None),) + map_ix
         new_bin_individuals = np.concatenate(
             (
-                self.array[indices_at_bin][1 : depth + 1],
+                self.array[indices_at_bin][1: depth + 1],
                 np.array([individual]),
-                self.array[indices_at_bin][depth + 1 :],
+                self.array[indices_at_bin][depth + 1:],
             )
         )
         self.array[indices_at_bin] = new_bin_individuals
@@ -182,10 +185,10 @@ class MAPElitesBase:
     """
 
     def __init__(
-        self,
-        env,
-        config: QDConfig,
-        init_map: Optional[Map] = None,
+            self,
+            env,
+            config: QDConfig,
+            init_map: Optional[Map] = None,
     ):
         """
         The base class for MAP-Elites and variants, implementing common functions and search.
@@ -239,7 +242,7 @@ class MAPElitesBase:
         pass
 
     def _init_maps(
-        self, init_map: Optional[Map] = None, log_snapshot_dir: Optional[str] = None
+            self, init_map: Optional[Map] = None, log_snapshot_dir: Optional[str] = None
     ):
         # perfomance of niches
         if init_map is None:
@@ -269,10 +272,10 @@ class MAPElitesBase:
             stem_dir = log_path.stem
 
             assert (
-                "step_" in stem_dir
+                    "step_" in stem_dir
             ), f"loading directory ({stem_dir}) doesn't contain 'step_' in name"
             self.start_step = (
-                int(stem_dir.replace("step_", "")) + 1
+                    int(stem_dir.replace("step_", "")) + 1
             )  # add 1 to correct the iteration steps to run
 
             with open(log_path / "config.json") as f:
@@ -287,7 +290,7 @@ class MAPElitesBase:
             with open(snapshot_path, "rb") as f:
                 maps = pickle.load(f)
             assert (
-                self.genomes.array.shape == maps["genomes"].shape
+                    self.genomes.array.shape == maps["genomes"].shape
             ), f"expected shape of map doesn't match init config settings, got {self.genomes.array.shape} and {maps['genomes'].shape}"
 
             self.genomes.array = maps["genomes"]
@@ -299,14 +302,14 @@ class MAPElitesBase:
             ), "snapshot to load contains empty map"
 
             assert (
-                self.env.config.env_name == old_config["env_name"]
+                    self.env.config.env_name == old_config["env_name"]
             ), f'unmatching environments, got {self.env.config.env_name} and {old_config["env_name"]}'
 
             # compute top indices
             if hasattr(self.fitnesses, "top"):
                 top_array = np.array(self.fitnesses.top)
                 for cell_idx in np.ndindex(
-                    self.fitnesses.array.shape[1:]
+                        self.fitnesses.array.shape[1:]
                 ):  # all indices of cells in map
                     nonzero = np.nonzero(
                         self.fitnesses.array[(slice(None),) + cell_idx] != -np.inf
@@ -407,9 +410,9 @@ class MAPElitesBase:
             self.fitness_history["niches_filled"].append(self.niches_filled())
 
             if (
-                self.save_snapshot_interval is not None
-                and n_steps != 0
-                and n_steps % self.save_snapshot_interval == 0
+                    self.save_snapshot_interval is not None
+                    and n_steps != 0
+                    and n_steps % self.save_snapshot_interval == 0
             ):
                 self.save_results(step=n_steps)
 
@@ -422,12 +425,28 @@ class MAPElitesBase:
         downsampled_solution = self._downsample_map_elites(self.config.number_of_final_solutions)
         downsampled_solution.save_results(step=n_steps)
         downsampled_solution.visualize()
+        downsampled_genomes = downsampled_solution.genomes.array[downsampled_solution.nonzero.array]
+        # make sure we have enough solutions after down-sampling
+        if len(downsampled_genomes) < self.config.number_of_final_solutions:
+            logger.warning(f"Downsampled map has only {len(downsampled_genomes)} solutions, "
+                           f"while {self.config.number_of_final_solutions} were requested. Sampling more solutions randomly from the map.")
+            has_enough_solutions = (len(self.nonzero.array) >= self.config.number_of_final_solutions)
+            if not has_enough_solutions:
+                logger.warning(
+                    f"Map has only {len(self.nonzero.array)} solutions, while {self.config.number_of_final_solutions} were requested."
+                    f" Sampling more solutions randomly from the map.")
+            for i in range((self.config.number_of_final_solutions - len(downsampled_genomes))):
+                map_ix = self.random_selection()
+                while self.genomes[map_ix] in downsampled_genomes and has_enough_solutions:
+                    map_ix = self.random_selection()
+                downsampled_genomes = np.append(downsampled_genomes, self.genomes[map_ix])
+        logger.info(f"Final Downsampled map has {len(downsampled_genomes)} solutions.")
 
         # evaluate with oracle if requested (both original and downsampled)
         if self.config.eval_with_oracle:
             _ = self.env.eval_with_oracle(
                 genotypes=self.genomes.array[self.nonzero.array],
-                downsampled_genotypes=downsampled_solution.genomes.array[downsampled_solution.nonzero.array],
+                downsampled_genotypes=downsampled_genomes,
                 k=self.config.number_of_final_solutions,
                 save_dir=Path(self.config.output_dir) / "oracle_evaluations",
             )
@@ -545,7 +564,6 @@ class MAPElitesBase:
             json.dump(tmp_config, f)
         f.close()
 
-
     def plot_fitness(self):
         import matplotlib.pyplot as plt
 
@@ -626,8 +644,7 @@ class MAPElitesBase:
         Downsample a MAP-Elites repertoire into a smaller MAP-Elites repertoire.
         This function initializes a new MAPElites instance without changing the original.
         """
-        return self #todo: implement for regular MAPElites
-
+        return self  # todo: implement for regular MAPElites
 
 
 class MAPElites(MAPElitesBase):
@@ -642,11 +659,11 @@ class MAPElites(MAPElitesBase):
     """
 
     def __init__(
-        self,
-        env,
-        config: MAPElitesConfig,
-        *args,
-        **kwargs,
+            self,
+            env,
+            config: MAPElitesConfig,
+            *args,
+            **kwargs,
     ):
         """
         Class implementing MAP-Elites, a quality-diversity algorithm.
@@ -693,12 +710,12 @@ class CVTMAPElites(MAPElitesBase):
     """
 
     def __init__(
-        self,
-        env,
-        config: CVTMAPElitesConfig,
-        data_to_init: Optional[list[Genotype]] = None,
-        *args,
-        **kwargs,
+            self,
+            env,
+            config: CVTMAPElitesConfig,
+            data_to_init: Optional[list[Genotype]] = None,
+            *args,
+            **kwargs,
     ):
         """
         Class implementing CVT-MAP-Elites, a variant of MAP-Elites.
@@ -847,12 +864,12 @@ class CVTMAPElites(MAPElitesBase):
                 else:
                     g = self.genomes.array[i]
                     if isinstance(g, Genotype):                        plt.scatter(
-                            self.env.to_phenotype(g)[0],
-                            self.env.to_phenotype(g)[1],
-                            s=10,
-                            marker=".",
-                            color=color,
-                        )
+                        self.env.to_phenotype(g)[0],
+                        self.env.to_phenotype(g)[1],
+                        s=10,
+                        marker=".",
+                        color=color,
+                    )
 
             plt.xlim([0, self.env.behavior_space[1, 0]])
             plt.ylim([0, self.env.behavior_space[1, 1]])
@@ -923,7 +940,7 @@ class CVTMAPElites(MAPElitesBase):
 
         # Initialize a new CVT MAP-Elites instance with downsampled centroids
         downsampled_config = deepcopy(self.config)
-        downsampled_config.cvt_samples=len(original_genotypes)
+        downsampled_config.cvt_samples = len(original_genotypes)
         downsampled_config.n_niches = new_num_cells
         downsampled_config.output_dir = os.path.join(
             self.config.output_dir, f"downsampled_{new_num_cells}"
@@ -946,4 +963,3 @@ class CVTMAPElites(MAPElitesBase):
                     downsampled_map.nonzero[map_ix] = True
 
         return downsampled_map
-
