@@ -306,7 +306,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
             oracle=self.oracle,
             k=k,
             plot=(save_dir is not None),
-            save_path=save_dir
+            save_path=save_dir,
         )
         return results
 

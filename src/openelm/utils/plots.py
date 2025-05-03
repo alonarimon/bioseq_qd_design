@@ -3,6 +3,7 @@ from typing import Dict, List
 
 import numpy as np
 from matplotlib import pyplot as plt
+import wandb
 
 
 def plot_learning_curves(
@@ -39,6 +40,7 @@ def plot_learning_curves(
     plt.ylabel(y_label)
     if show_legend:
         plt.legend(loc=legend_loc)
+    wandb.log({title: wandb.Image(plt)})
     if save_fig:
         os.makedirs(save_dir, exist_ok=True)
         plt.savefig(os.path.join(save_dir, f"{fig_name}_{model_id}.png"))
@@ -66,6 +68,7 @@ def plot_distance_histograms(
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
+    wandb.log({title: wandb.Image(plt)})
     plt.savefig(save_path)
     plt.close()
 
@@ -87,5 +90,6 @@ def plot_distance_histograms_only_k(
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
+    wandb.log({title: wandb.Image(plt)})
     plt.savefig(save_path)
     plt.close()

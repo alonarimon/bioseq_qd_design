@@ -85,6 +85,7 @@ def downsample_solutions(genomes, k, save_dir):
         env=bioseq_env,
         config=downsampled_config,
         data_to_init=genomes,
+        name="downsampled_map",
     )
     phenotypes = [bioseq_env.to_phenotype(genotype) for genotype in genomes]
     # Insert solutions from original map into the new downsampled map

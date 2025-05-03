@@ -5,6 +5,9 @@ from pathlib import Path
 import logging
 import Levenshtein
 import numpy as np
+import yaml
+
+import wandb
 from scipy.spatial.distance import pdist, cosine
 import tensorflow as tf
 import RNA
@@ -236,10 +239,13 @@ def calc_all_metrics(
     return results
 
 if __name__ == '__main__':
+
     # Example debug usage
     # load maps from pkl file
+
     bioseq_base_dir = Path(__file__).resolve().parents[5]
     all_logs_dirs = [
+        bioseq_base_dir / "logs" / "elm" / "25-04-30_15-18" / "step_19999",
         bioseq_base_dir / "logs" / "elm" / "25-04-23_18-53" / "step_19999",
         bioseq_base_dir / "logs" / "elm" / "25-04-21_15-44" / "step_4999",
         bioseq_base_dir / "logs" / "elm" / "25-04-16_15-09" / "step_19999",
@@ -247,6 +253,23 @@ if __name__ == '__main__':
         bioseq_base_dir / "logs" / "elm" / "25-04-15_19-05" / "step_99999",
     ]
     for exp_logs_dir in all_logs_dirs:
+
+        config_file = os.path.join(exp_logs_dir.parent, ".hydra", "config.yaml")
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        wandb.init(
+            project="bioseq_qd_design",
+            group="evaluation_of_old_runs_elm",
+            name=f"{exp_logs_dir.parent.name}_{exp_logs_dir.name}",
+            config=config,
+        )
+        wandb.config.update(config)
+        # log all the png files in the logs directory
+        for file in os.listdir(exp_logs_dir.parent):
+            if file.endswith(".png"):
+                file_path = os.path.join(exp_logs_dir.parent, file)
+                wandb.log({file: wandb.Image(file_path)})
+
         maps_pkl_file = os.path.join(exp_logs_dir, "maps.pkl")
         with open(maps_pkl_file, "rb") as f:
             maps = pickle.load(f)
@@ -269,12 +292,14 @@ if __name__ == '__main__':
         offline_data_path_x = bioseq_base_dir / "design-bench-detached" / "design_bench_data" / "utr" / "oracle_data" / "original_v0_minmax_orig" / "sampled_offline_relabeled_data" / "sampled_data_fraction_1_3_seed_42"
         ref_list = loaf_ref_list(os.path.join(offline_data_path_x, "x.npy"), 16384, seed=42)
         ref_genotypes = [RNAGenotype(seq) for seq in ref_list]
-        save_dir = os.path.join(exp_logs_dir, "debug_distances")
+        save_dir = os.path.join(exp_logs_dir, "oracle_evaluation")
         downsampled_genoms = downsample_solutions(genomes=non_zero_genoms, k=128, save_dir=save_dir)
         logging.info(f"Evaluating {len(non_zero_genoms)} genomes and {len(downsampled_genoms)} down-sampled genomes against the oracle and reference set.")
 
-        evaluate_solutions_set(oracle=oracle,
+        results = evaluate_solutions_set(oracle=oracle,
                                solutions=non_zero_genoms,
                                ref_solutions=ref_genotypes,
                                downsampled_solutions=downsampled_genoms,
                                k=128, plot=True, save_path=save_dir)
+        wandb.log(results)
+        wandb.finish()

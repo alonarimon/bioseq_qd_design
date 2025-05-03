@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+import wandb
 from sklearn.cluster import KMeans
 from tqdm import trange
 
@@ -189,6 +190,8 @@ class MAPElitesBase:
             env,
             config: QDConfig,
             init_map: Optional[Map] = None,
+            name: Optional[str] = None,
+            data_to_init: Optional[list[Genotype]] = None,
     ):
         """
         The base class for MAP-Elites and variants, implementing common functions and search.
@@ -212,6 +215,7 @@ class MAPElitesBase:
         self.load_np_rng_state = self.config.load_np_rng_state
         self.rng = np.random.default_rng(self.config.seed)
         self.rng_generators = None
+        self.name = name if name is not None else "MAPElites"
 
         # self.history will be set/reset each time when calling `.search(...)`
         self.history: dict = defaultdict(list)
@@ -221,11 +225,11 @@ class MAPElitesBase:
         self.recycled = [None] * 1000
         self.recycled_count = 0
 
-        self._init_discretization()
+        self._init_discretization(data_to_init)
         self._init_maps(init_map, self.config.log_snapshot_dir)
         print(f"MAP of size: {self.fitnesses.dims} = {self.fitnesses.map_size}")
 
-    def _init_discretization(self):
+    def _init_discretization(self, data_to_init: Optional[list[Genotype]] = None):
         """Initializes the discretization of the behavior space."""
         raise NotImplementedError
 
@@ -408,6 +412,13 @@ class MAPElitesBase:
             self.fitness_history["mean"].append(self.mean_fitness())
             self.fitness_history["qd_score"].append(self.qd_score())
             self.fitness_history["niches_filled"].append(self.niches_filled())
+            wandb.log({
+                f"{self.name}_max_fitness": self.max_fitness(),
+                f"{self.name}_min_fitness": self.min_fitness(),
+                f"{self.name}_mean_fitness": self.mean_fitness(),
+                f"{self.name}_qd_score": self.qd_score(),
+                f"{self.name}_niches_filled": self.niches_filled(),
+            })
 
             if (
                     self.save_snapshot_interval is not None
@@ -444,12 +455,13 @@ class MAPElitesBase:
 
         # evaluate with oracle if requested (both original and downsampled)
         if self.config.eval_with_oracle:
-            _ = self.env.eval_with_oracle(
+            results = self.env.eval_with_oracle(
                 genotypes=self.genomes.array[self.nonzero.array],
                 downsampled_genotypes=downsampled_genomes,
                 k=self.config.number_of_final_solutions,
                 save_dir=Path(self.config.output_dir) / "oracle_evaluations",
             )
+            wandb.log(results)
         return str(max_genome)
 
     def update_map(self, new_individuals, max_genome, max_fitness):
@@ -535,17 +547,24 @@ class MAPElitesBase:
             "nonzero": self.nonzero.array,
         }
         # Save maps as pickle file
+        artifact = wandb.Artifact(f"{self.name}_results", type=f"map_snapshots_step_{step}")
         try:
-            with open((output_folder / "maps.pkl"), "wb") as f:
+            maps_file = output_folder / f"{self.name}_maps.pkl"
+            with open(maps_file, "wb") as f:
                 pickle.dump(maps, f)
+            artifact.add_file(str(maps_file))
         except Exception:
             pass
         if self.save_history:
-            with open((output_folder / "history.pkl"), "wb") as f:
+            history_file = output_folder / f"{self.name}_history.pkl"
+            with open(history_file, "wb") as f:
                 pickle.dump(self.history, f)
+            artifact.add_file(str(history_file))
 
-        with open((output_folder / "fitness_history.pkl"), "wb") as f:
+        fitness_history_file = output_folder / f"{self.name}_fitness_history.pkl"
+        with open(fitness_history_file, "wb") as f:
             pickle.dump(self.fitness_history, f)
+        artifact.add_file(str(fitness_history_file))
 
         # save numpy rng state to load if resuming from deterministic snapshot
         if self.save_np_rng_state:
@@ -553,8 +572,10 @@ class MAPElitesBase:
                 "env_rng": self.env.get_rng_state(),
                 "qd_rng": self.rng,
             }
-            with open((output_folder / "np_rng_state.pkl"), "wb") as f:
+            rng_file = output_folder / f"{self.name}_np_rng_state.pkl"
+            with open(rng_file, "wb") as f:
                 pickle.dump(rng_generators, f)
+            artifact.add_file(str(rng_file))
 
         # save env_name to check later, for verifying correctness of environment to run with snapshot load
         tmp_config = dict()
@@ -562,7 +583,10 @@ class MAPElitesBase:
 
         with open((output_folder / "config.json"), "w") as f:
             json.dump(tmp_config, f)
+            artifact.add_file(str(output_folder / "config.json"))
         f.close()
+
+        wandb.log_artifact(artifact)
 
     def plot_fitness(self):
         import matplotlib.pyplot as plt
@@ -576,6 +600,7 @@ class MAPElitesBase:
         plt.xlabel("Iteration")
         plt.ylabel("Fitness")
         plt.title("Fitness history")
+        wandb.log({f"{self.name}_fitness_history": wandb.Image(plt)})
         plt.savefig(f"{save_path}/MAPElites_fitness_history.png")
         plt.close("all")
 
@@ -585,6 +610,7 @@ class MAPElitesBase:
         plt.xlabel("Iteration")
         plt.ylabel("QD score")
         plt.title("QD score history")
+        wandb.log({f"{self.name}_qd_score": wandb.Image(plt)})
         plt.savefig(f"{save_path}/MAPElites_qd_score.png")
         plt.close("all")
 
@@ -594,6 +620,7 @@ class MAPElitesBase:
         plt.xlabel("Iteration")
         plt.ylabel("Niches filled")
         plt.title("Niches filled history")
+        wandb.log({f"{self.name}_niches_filled": wandb.Image(plt)})
         plt.savefig(f"{save_path}/MAPElites_niches_filled.png")
         plt.close("all")
 
@@ -615,6 +642,7 @@ class MAPElitesBase:
 
             plt.figure()
             plt.pcolor(map2d, cmap="inferno")
+            wandb.log({f"{self.name}_map": wandb.Image(plt)})
             plt.savefig(f"{save_path}/MAPElites_vis.png")
         plt.close("all")
 
@@ -637,6 +665,7 @@ class MAPElitesBase:
             except AttributeError:
                 pass
         save_path: str = self.config.output_dir
+        wandb.log({f"{self.name}_individuals": wandb.Image(plt)})
         plt.savefig(f"{save_path}/MAPElites_individuals.png")
 
     def _downsample_map_elites(self, new_num_cells: int):
@@ -678,9 +707,11 @@ class MAPElites(MAPElitesBase):
         self.map_grid_size = config.map_grid_size
         super().__init__(env=env, config=config, *args, **kwargs)
 
-    def _init_discretization(self):
+    def _init_discretization(self, data_to_init: Optional[list[Genotype]] = None):
         """Set up the discrete behaviour space for the algorithm."""
         # TODO: make this work for any number of dimensions
+        if data_to_init is not None:
+            raise NotImplementedError("MAPElites does not support init from existing data yet")
         self.bins = np.linspace(*self.env.behavior_space, self.map_grid_size[0] + 1)[1:-1].T  # type: ignore
 
     def _get_map_dimensions(self):
@@ -713,7 +744,6 @@ class CVTMAPElites(MAPElitesBase):
             self,
             env,
             config: CVTMAPElitesConfig,
-            data_to_init: Optional[list[Genotype]] = None,
             *args,
             **kwargs,
     ):
@@ -729,6 +759,7 @@ class CVTMAPElites(MAPElitesBase):
         """
         self.cvt_samples: int = config.cvt_samples
         self.n_niches: int = config.n_niches
+
         super().__init__(env=env, config=config, *args, **kwargs)
 
     def _init_discretization(self, data_to_init: Optional[list[Genotype]] = None):
@@ -828,6 +859,7 @@ class CVTMAPElites(MAPElitesBase):
         else:
             print("Not enough dimensions to plot centroids")
             return
+        wandb.log({f"{self.name}_centroids": wandb.Image(plt)})
         save_path: str = self.config.output_dir
         os.makedirs(save_path, exist_ok=True)
         plt.savefig(f"{save_path}/MAPElites_centroids.png")
@@ -926,6 +958,7 @@ class CVTMAPElites(MAPElitesBase):
         else:
             print("Not enough dimensions to plot behaviour space history")
             return
+        wandb.log({f"{self.name}_behaviour_history": wandb.Image(plt)})
         save_path: str = self.config.output_dir
         plt.savefig(f"{save_path}/MAPElites_behaviour_history.png")
 
@@ -950,6 +983,7 @@ class CVTMAPElites(MAPElitesBase):
             env=self.env,
             config=downsampled_config,
             data_to_init=original_genotypes,
+            name=f"{self.name}_downsampled",
         )
 
         # Insert solutions from original map into the new downsampled map
