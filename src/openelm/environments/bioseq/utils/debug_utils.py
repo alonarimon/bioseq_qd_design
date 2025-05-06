@@ -79,8 +79,8 @@ def downsample_solutions(genomes, k, save_dir):
     downsampled_config.n_niches = k
     downsampled_config.output_dir = os.path.join(save_dir, "downsampled_map")
     bioseq_env_config = QDBioRNAEnvConfig()
-    from openelm.environments.bioseq.bioseq import RNAEvolution
-    bioseq_env = RNAEvolution(config=bioseq_env_config, mutation_model=RandomSequenceMutator(BioRandomModelConfig()))
+    from openelm.environments.bioseq.bioseq import BioSeqEvolution
+    bioseq_env = BioSeqEvolution(config=bioseq_env_config, mutation_model=RandomSequenceMutator(BioRandomModelConfig()))
     downsampled_map = CVTMAPElites(
         env=bioseq_env,
         config=downsampled_config,

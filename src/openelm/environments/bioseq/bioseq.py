@@ -9,13 +9,15 @@ from scipy.special import softmax
 from tqdm import tqdm
 import Levenshtein
 
+import design_bench
 from design_bench.datasets.discrete_dataset import DiscreteDataset
 from design_bench.disk_resource import DiskResource
 from design_bench.oracles.tensorflow import ResNetOracle
 
+
 from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig
 from openelm.environments.base import BaseEnvironment, Phenotype, Genotype
-from openelm.environments.bioseq.genotypes import RNAGenotype
+from openelm.environments.bioseq.genotypes import BioSeqGenotype, RNAGenotype, DNAGenotype
 from openelm.mutation_model import MutationModel, get_model
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import get_fitness_model
 from openelm.environments.bioseq.utils.evaluation import evaluate_solutions_set
@@ -23,7 +25,7 @@ from openelm.environments.bioseq.utils.evaluation import evaluate_solutions_set
 logger = logging.getLogger()
 
 
-class RNAEvolution(BaseEnvironment[RNAGenotype]):
+class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
     def __init__(
             self,
             config: QDBioRNAEnvConfig,
@@ -46,17 +48,28 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         self.sequence_length = config.sequence_length
         self.alphabet = config.alphabet
         self.rng = np.random.default_rng(config.seed)
-        self.offline_data_dir = config.offline_data_dir
-        self.reference_set = self._load_ref_set()
-
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info(f"Using device: {self.device}")
         # set all random seeds for reproducibility
         torch.manual_seed(config.seed)
         np.random.seed(config.seed)
-
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(config.seed)
+
+        if self.config.task == 'TFBind10-Exact-v0':
+            self.task = design_bench.make(self.config.task, relabel=False)
+            self.offline_data_x = self.task.x
+            self.offline_data_y = self.task.y
+            self.offline_data_x_gen = [DNAGenotype(seq) for seq in self.offline_data_x]
+
+
+        elif self.config.task == 'UTR-ResNet-v0-CUSTOM':
+            self.task = None
+            # Load the reference set from the offline data directory
+            self.offline_data_x = np.load(os.path.join(config.offline_data_dir, self.config.offline_data_x_file))
+            self.offline_data_x_gen = np.array([RNAGenotype(seq) for seq in self.offline_data_x])
+
+        self.reference_set = self._load_ref_set()
         
         if self.config.bd_type == "similarity_based":
             self.projection_matrix = np.random.uniform(low=0.0, high=1.0, size=(config.size_of_refs_collection, len(config.behavior_space))).astype(np.float32)  # Initialize W from N(0,1)
@@ -80,6 +93,9 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
 
         if self.batch_size > self.fitness_function.config.batch_size:
             logger.warning(f"Environment batch size {self.batch_size} exceeds the fitness model batch size {self.fitness_function.config.batch_size}.")
+    
+    
+    
     def _get_r_distance_norm_const(self, subsample = False) -> float:
         """
         Calculate the normalization constant for the distance metric.
@@ -87,13 +103,12 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         :return: Normalization constant.
         """
         dists = []
-        offline_data = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
         if subsample:
-            sampled_indexes = self.rng.choice(offline_data.shape[0], size=(self.config.size_of_refs_collection * 2), replace=False)
-            offline_data = offline_data[sampled_indexes]
-        for i in tqdm(range(len(offline_data)), desc="Calculating R normalization constant"):
-            for j in range(i + 1, len(offline_data)):
-                    dist = Levenshtein.distance(offline_data[i], offline_data[j])
+            sampled_indexes = self.rng.choice(self.offline_data_x.shape[0], size=(self.config.size_of_refs_collection * 2), replace=False)
+            offline_data = self.offline_data_x[sampled_indexes]
+        for i in tqdm(range(len(self.offline_data_x)), desc="Calculating R normalization constant"):
+            for j in range(i + 1, len(self.offline_data_x)):
+                    dist = Levenshtein.distance(self.offline_data_x[i], self.offline_data_x[j])
                     dists.append(dist)
 
         R_normalization_constant = np.mean(dists) / 2
@@ -135,15 +150,14 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         :param subsample: if True, subsample the offline data to the size of the reference collection.
         :return: tuple of min and max values for the behavioral descriptor space.
         """
-        offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
+        offline_data_x_gen = self.offline_data_x_gen
         if subsample:
             # Subsample the offline data
-            random_indexes = self.rng.choice(offline_data_x.shape[0], size=self.config.size_of_refs_collection, replace=False)
-            offline_data_x = offline_data_x[random_indexes]
+            random_indexes = self.rng.choice(self.offline_data_x.shape[0], size=self.config.size_of_refs_collection, replace=False)
+            offline_data_x_gen = self.offline_data_x_gen[random_indexes]
 
-        offline_data_genotypes = [RNAGenotype(seq) for seq in offline_data_x]
         # Calculate the behavioral descriptor for each genotype
-        bd_values = np.array([self.to_phenotype(genotype) for genotype in offline_data_genotypes])
+        bd_values = np.array([self.to_phenotype(genotype) for genotype in offline_data_x_gen])
         # Calculate the min and max values for each behavioral descriptor, for all dimensions
         min_bd = np.min(bd_values, axis=0)
         max_bd = np.max(bd_values, axis=0)
@@ -156,21 +170,25 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
     def set_rng_state(self, rng_state: Optional[np.random.Generator]):
         self.rng = rng_state
 
-    def initial_sequences(self) -> list[RNAGenotype]:
+    def initial_sequences(self) -> list[BioSeqGenotype]:
         """
         Generate a batch of initial sequences by randomly sample from the offline data.
         @return: list of RNAGenotype
         """
-        offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
         seed = self.config.initial_population_sample_seed
         rng = np.random.default_rng(seed)  # Ensures reproducibility, not using the self.rng
-        random_indexes = rng.choice(offline_data_x.shape[0], size=self.batch_size, replace=False)
-        initial_sequences = offline_data_x[random_indexes]
-        initial_genotypes = [RNAGenotype(seq) for seq in initial_sequences]
+        random_indexes = rng.choice(self.offline_data_x.shape[0], size=self.batch_size, replace=False)
+        initial_sequences = self.offline_data_x[random_indexes]
+        if self.config.task == 'TFBind10-Exact-v0':
+            initial_genotypes = [DNAGenotype(seq) for seq in initial_sequences]
+        elif self.config.task == 'UTR-ResNet-v0-CUSTOM':
+            initial_genotypes = [RNAGenotype(seq) for seq in initial_sequences]
+        else:
+            raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v0, UTR-ResNet-v0-CUSTOM")
         logger.info(f"index of initial sequences:\n { random_indexes[:5]}")
         return initial_genotypes
 
-    def _nucleotides_frequencies(self, x: RNAGenotype) -> np.ndarray:
+    def _nucleotides_frequencies(self, x: BioSeqGenotype) -> np.ndarray:
         """
         Calculate the frequencies of nucleotides in a sequence.
         :return: numpy array with frequencies of the nucleotides 0, 1, 2
@@ -188,7 +206,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
 
         return freq
 
-    def _similarity_based_bd(self, x: RNAGenotype) -> np.ndarray:
+    def _similarity_based_bd(self, x: BioSeqGenotype) -> np.ndarray:
         """
         Calculate the similarity-based behavioral descriptor.
         :param x: RNAGenotype
@@ -200,7 +218,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         bd = np.exp(dn) * (phi_n @ self.projection_matrix)
         return bd
 
-    def to_phenotype(self, x: RNAGenotype) -> Phenotype:
+    def to_phenotype(self, x: BioSeqGenotype) -> Phenotype:
         """
         Convert a genotype to a phenotype.
         :param x: genotype
@@ -219,17 +237,14 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
 
         return bd
 
-    def _load_ref_set(self) -> list[RNAGenotype]:
+    def _load_ref_set(self) -> np.array:
         """
         Load the reference set from the offline data directory.
-        :return: list of RNAGenotype
+        :return: numpy array of the reference set
         """
-        # Load the reference set from the offline data directory
-        offline_data_x = np.load(os.path.join(self.offline_data_dir, self.config.offline_data_x_file))
-        random_indexes = self.rng.choice(offline_data_x.shape[0], size=self.config.size_of_refs_collection, replace=False)
-        reference_set = offline_data_x[random_indexes]
-        reference_set = [RNAGenotype(seq) for seq in reference_set]
-        return reference_set
+        random_indexes = self.rng.choice(self.offline_data_x.shape[0], size=self.config.size_of_refs_collection, replace=False)
+        reference_set = self.offline_data_x_gen[random_indexes]
+        return reference_set.tolist() #todo: work with np arrays instead of lists
 
     def _random_seq(self) -> list[int]:
         seq = [self.rng.choice(self.alphabet) for _ in range(self.sequence_length)]
@@ -247,19 +262,29 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         mutated_seq[i] = new_letter
         return mutated_seq
 
-    def random(self) -> list[RNAGenotype]:
+    def random(self) -> list[BioSeqGenotype]:
         """
         Generate a batch of random genotypes.
         """
-        return [RNAGenotype(self._random_seq()) for _ in range(self.batch_size)]
+        if self.config.task == 'TFBind10-Exact-v0':
+            return [DNAGenotype(self._random_seq()) for _ in range(self.batch_size)]
+        elif self.config.task == 'UTR-ResNet-v0-CUSTOM':
+            return [RNAGenotype(self._random_seq()) for _ in range(self.batch_size)]
+        else:
+            raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v0, UTR-ResNet-v0-CUSTOM")
 
-    def mutate(self, genomes: list[RNAGenotype]) -> list[RNAGenotype]:
+    def mutate(self, genomes: list[BioSeqGenotype]) -> list[BioSeqGenotype]:
         """
         Mutate a list of genomes by applying the mutation function to each genome.
-        """
-        return [RNAGenotype(self._mutate_seq(g.sequence)) for g in genomes] #todo: change to use mutation model
+        """ #todo: change to use mutation model
+        if self.config.task == 'TFBind10-Exact-v0':
+            return [DNAGenotype(self._mutate_seq(g.sequence)) for g in genomes]
+        elif self.config.task == 'UTR-ResNet-v0-CUSTOM':
+            return [RNAGenotype(self._mutate_seq(g.sequence)) for g in genomes]
+        else:
+            raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v0, UTR-ResNet-v0-CUSTOM")
 
-    def fitness(self, x: RNAGenotype) -> float:
+    def fitness(self, x: BioSeqGenotype) -> float:
         """
         Evaluate the fitness of the sequence using a list of scoring functions. (scoring ensemble)
         :param x: RNAGenotype
@@ -269,7 +294,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         fitness = fitness[0]
         return fitness
 
-    def fitness_batch(self, genotypes: list[RNAGenotype]) -> list[float]:
+    def fitness_batch(self, genotypes: list[BioSeqGenotype]) -> list[float]:
         """
         Evaluate the fitness of a batch of sequences using a list of scoring functions. (scoring ensemble)
         :param genotypes: list of RNAGenotype
@@ -289,7 +314,7 @@ class RNAEvolution(BaseEnvironment[RNAGenotype]):
         outputs = np.concatenate(outputs, axis=0).tolist()
         return outputs
 
-    def eval_with_oracle(self, genotypes: list[RNAGenotype], downsampled_genotypes: list[RNAGenotype] = None, k=128, save_dir: str | Path = None) -> dict:
+    def eval_with_oracle(self, genotypes: list[BioSeqGenotype], downsampled_genotypes: list[BioSeqGenotype] = None, k=128, save_dir: str | Path = None) -> dict:
         """
         Evaluate a list of genotypes using the oracle model.
         The oracle model is used to evaluate the solutions after the optimization process.

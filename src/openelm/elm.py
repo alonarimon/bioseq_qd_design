@@ -41,9 +41,9 @@ def load_env(env_name: str) -> Type[BaseEnvironment]:
 
         return PoetryEvolution
     elif env_name == "qd_bio_rna":
-        from openelm.environments.bioseq.bioseq import RNAEvolution
+        from openelm.environments.bioseq.bioseq import BioSeqEvolution
 
-        return RNAEvolution
+        return BioSeqEvolution
     else:
         raise ValueError(f"Unknown environment {env_name}")
 
