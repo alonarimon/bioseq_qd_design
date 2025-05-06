@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Optional
 
 from hydra.core.config_store import ConfigStore
@@ -76,19 +77,18 @@ class FitnessHelixMRNAConfig(ModelConfig):
 @dataclass
 class QDConfig(BaseConfig):
     init_steps: int = 1 
-    total_steps: int =  5000  #100000
+    total_steps: int =  100  #100000
     history_length: int = 1
     save_history: bool = False
-    save_snapshot_interval: int = 1000
+    save_snapshot_interval: int = 5000
     log_snapshot_dir: str = ""
     seed: Optional[int] = 42
     save_np_rng_state: bool = False
     load_np_rng_state: bool = False
     crossover: bool = False
     crossover_parents: int = 2
-    eval_with_oracle_on_snapshot: bool = True
+    eval_with_oracle: bool = True
     number_of_final_solutions: int = 128
-    eval_with_oracle_interval : int = 5000 # evaluation with oracle is usually slow, so recommend to do it not often
 
 
 @dataclass
@@ -182,26 +182,28 @@ class QDEnvConfig(EnvConfig):
     )
 
 @dataclass
-class QDBioRNAEnvConfig(EnvConfig):
-    env_name: str = "qd_bio_rna"
+class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this will be general
+    env_name: str = "qd_bio_rna" # todo: naming
     behavior_space: list[list[float]] = field(
         default_factory=lambda: [
             [0, 1],
             [0, 1],
+            [0, 1]
         ]
     )
     sequence_length: int = 50
     alphabet: list[int] = field(default_factory=lambda: [0, 1, 2, 3]) # [A, C, G, U]
-    size_of_refs_collection: int =  2048 # Number of reference sequences to use for novelty evaluation and BD
+    size_of_refs_collection: int =  16384 # Number of reference sequences to use for novelty evaluation and BD
     offline_data_dir: str = r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42"  # Path to the offline data directory
     offline_data_x_file: str = "x.npy"  # Name of the offline data X file
     offline_data_y_file: str = "y.npy"  # Name of the offline data Y file
     oracle_model_path: str = r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig"  # Path to the oracle model
     fitness_model_config: ModelConfig = field(default_factory=lambda: FitnessBioEnsembleConfig())
-    bd_type: str = "similarity_based" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred). "similarity_based": The phenotype is a vector of the similarity of the sequence to the offline ref data.
+    bd_type: str = "nucleotides_frequencies" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred). "similarity_based": The phenotype is a vector of the similarity of the sequence to the offline ref data.
     normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
     distance_normalization_constant: float = 14.3378899  # Constant for distance normalization (for the similarity-based BD). -1 means constant will be automatically calculated from the offline data.
     initial_population_sample_seed: int = 123  # initial population sample seed
+    task: str = 'TFBind10-Exact-v0' # 'UTR-ResNet-v0-CUSTOM' or 'TFBind10-Exact-v0'
 
     def __post_init__(self):
         path_fields = ['offline_data_dir', 'oracle_model_path']
@@ -212,6 +214,7 @@ class QDBioRNAEnvConfig(EnvConfig):
                     path = Path(value)
                     if not path.is_absolute():
                         setattr(self, field_name, str((bioseq_base_dir / path).resolve()))
+
 
 @dataclass
 class PromptEnvConfig(EnvConfig):
@@ -233,7 +236,7 @@ class ELMConfig(BaseConfig):
     hydra: Any = field(
         default_factory=lambda: {
             "run": {
-                "dir": "logs/elm/${hydra.job.override_dirname}/${now:%y-%m-%d_%H-%M}"
+                "dir": "logs/elm/${hydra.job.override_dirname:-}/${now:%y-%m-%d_%H-%M}"
             }
         }
     )
@@ -241,8 +244,56 @@ class ELMConfig(BaseConfig):
     model: Any = MISSING
     qd: Any = MISSING
     env: Any = MISSING
-    run_name: Optional[str] = None
+    run_name: str = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    wandb_group: str = "run_elm"
 
+@dataclass
+class OneShotBioELMConfig(ELMConfig):
+    defaults: list[Any] = field(default_factory=lambda: [
+        {"model": "bio_random"},
+        {"qd": "cvtmapelites"},
+        {"env": "qd_bio_rna"},
+        "_self_",
+    ])
+    qd: Any = CVTMAPElitesConfig(
+        qd_name="cvtmapelites",
+        n_niches=2000,
+        cvt_samples=10000,
+        init_steps=1,
+        total_steps=100000,
+        history_length=1,
+        save_history=False,
+        save_snapshot_interval=5000,
+        log_snapshot_dir="",
+        seed=42,
+        save_np_rng_state=False,
+        load_np_rng_state=False,
+        crossover=False,
+        crossover_parents=2,
+        eval_with_oracle=True,
+        number_of_final_solutions=128,
+    )
+    env: Any = QDBioRNAEnvConfig(
+        env_name="qd_bio_rna",
+        behavior_space=[
+            [0, 1],
+            [0, 1],
+            [0, 1]
+        ],
+        sequence_length=50,
+        alphabet=[0, 1, 2, 3], # [A, C, G, U]
+        size_of_refs_collection=16384,
+        offline_data_dir=r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42",
+        offline_data_x_file="x.npy",
+        offline_data_y_file="y.npy",
+        oracle_model_path=r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig",
+        fitness_model_config=FitnessBioEnsembleConfig(),
+        bd_type="nucleotides_frequencies",
+        normalize_bd=True,
+        distance_normalization_constant=14.3378899,
+        initial_population_sample_seed=123,
+        task='UTR-ResNet-v0-CUSTOM'
+    )
 
 defaults_p3 = [
     {"model": "prompt"},
@@ -260,25 +311,54 @@ class P3Config(BaseConfig):
             }
         }
     )
-    defaults: list[Any] = field(default_factory=lambda: defaults_p3)
-    model: Any = MISSING
-    env: Any = MISSING
-    run_name: Optional[str] = None
-    # --- The below are for run_p3.py
-    iterations_per_puzzle: int = 128
-    starting_seeds: list[int] = field(
-        default_factory=lambda: [3]
-    )  # indices of selection of puzzles to evaluate with
-    save_results: bool = True
-    save_result_obj: bool = False  # if saving results, include the whole output
-    # text from model for each iteration (which can get long)
-    probsol: bool = True  # generate new problem+solution pairs from given
-    # problems instead of just solutions to given problems
-    # set eval_k >0 to evaluate pass@k of previous runs using this k, instead of
-    # doing a new run
-    eval_k: int = -1
-    eval_timestamp: str = ""  # optionally provide timestamp of run to eval
-    # pass@k, otherwise eval with latest run of every problem
+
+
+@dataclass
+class OneShotSimilarityBDELMConfig(ELMConfig):
+    defaults: list[Any] = field(default_factory=lambda: [
+        {"model": "bio_random"},
+        {"qd": "cvtmapelites"},
+        {"env": "qd_bio_rna"},
+        "_self_",
+    ])
+    qd: Any = CVTMAPElitesConfig(
+        qd_name="cvtmapelites",
+        n_niches=2000,
+        cvt_samples=10000,
+        init_steps=1,
+        total_steps=100000,
+        history_length=1,
+        save_history=False,
+        save_snapshot_interval=5000,
+        log_snapshot_dir="",
+        seed=42,
+        save_np_rng_state=False,
+        load_np_rng_state=False,
+        crossover=False,
+        crossover_parents=2,
+        eval_with_oracle=True,
+        number_of_final_solutions=128,
+    )
+    env: Any = QDBioRNAEnvConfig(
+        env_name="qd_bio_rna",
+        behavior_space=[
+            [0, 1],
+            [0, 1]
+        ],
+        sequence_length=50,
+        alphabet=[0, 1, 2, 3], # [A, C, G, U]
+        size_of_refs_collection=16384,
+        offline_data_dir=r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42",
+        offline_data_x_file="x.npy",
+        offline_data_y_file="y.npy",
+        oracle_model_path=r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig",
+        fitness_model_config=FitnessBioEnsembleConfig(),
+        bd_type="similarity_based",
+        normalize_bd=True,
+        distance_normalization_constant=14.3378899,
+        initial_population_sample_seed=123,
+        task='UTR-ResNet-v0-CUSTOM'
+    )
 
 
 def register_configstore() -> ConfigStore:
@@ -300,6 +380,9 @@ def register_configstore() -> ConfigStore:
     cs.store(group="fitness_model", name="fitness_bio_ensemble", node=FitnessBioEnsembleConfig)
     cs.store(name="elmconfig", node=ELMConfig)
     cs.store(name="p3config", node=P3Config)
+    cs.store(name="oneshot_bio_elmconfig", node=OneShotBioELMConfig)
+    cs.store(name="oneshot_similarity_bd_elmconfig", node=OneShotSimilarityBDELMConfig)
+
     return cs
 
 

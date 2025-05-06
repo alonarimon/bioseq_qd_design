@@ -132,6 +132,7 @@ dmypy.json
 .vscode
 checkpoints/
 logs/
+wandb/
 archive/
 data/
 *.out

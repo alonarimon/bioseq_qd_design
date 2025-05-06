@@ -29,9 +29,8 @@ logging.getLogger("helical").setLevel(logging.WARNING)
 def main(config):
 
     # Set up wandb
-    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
     config_dict = OmegaConf.to_container(config, resolve=True)
-    wandb.init(project="bioseq_qd_design", group="run_elm", name=current_time, config=config_dict)
+    wandb.init(project="bioseq_qd_design", name=config.run_name, group=config.wandb_group, config=config_dict)
     wandb.config.update(config_dict)
 
     config.output_dir = HydraConfig.get().runtime.output_dir
