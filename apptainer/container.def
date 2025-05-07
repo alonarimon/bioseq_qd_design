@@ -24,6 +24,15 @@ From: ubuntu:22.04
 	export PYTHONPATH='/workdir'
 
 %post
+
+	# git
+	export GITHUB_USER=alonarimon
+	export GITHUB_TOKEN=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
+
+	# Debug: Check if environment variables are correctly set
+	echo "GITHUB_USER: $GITHUB_USER"
+  	echo "GITHUB_TOKEN: $GITHUB_TOKEN"
+
 	export DEBIAN_FRONTEND=noninteractive
 
 	# Export environment variables permanently
@@ -33,7 +42,7 @@ From: ubuntu:22.04
 	apt update && apt install -y git curl wget ffmpeg build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
 
 	# Clone repository to /workdir/
-	git clone --recurse-submodules https://{{ github_user }}:{{ github_token }}@github.com/alonarimon/bioseq_qd_design /workdir/
+	git clone --recurse-submodules https://$GITHUB_USER:$GITHUB_TOKEN@github.com/alonarimon/bioseq_qd_design /workdir/
 
 	# Install pyenv
 	export PYENV_ROOT="/workdir/.pyenv"
@@ -44,17 +53,21 @@ From: ubuntu:22.04
 	rm -rf /workdir/.pyenv/.git/
 
 	# Install Python
-	pyenv install 3.12
-	pyenv global 3.12
+	pyenv install 3.10
+	pyenv global 3.10
 
 	# Create a virtual environment
 	python -m venv /workdir/.venv
 	. /workdir/.venv/bin/activate
 	python -m ensurepip
+	pip cache purge
+
 	pip install --upgrade pip setuptools wheel
+	
+	sudo apt install nvidia-cuda-toolkit
 
 	# Install repository
-	cd /workdir/ && pip install -r requirements.txt
+	cd /workdir/ && pip install --no-cache-dir -r requirements.txt
 
 %runscript
 	# Run main
