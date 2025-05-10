@@ -1,9 +1,4 @@
 torch==2.6.0
-ninja
-
--e ./external/helical[mamba-ssm]
--e ./design-bench-detached
-
 hydra-core>=1.2.0
 wandb>=0.13
 numpy~=1.26.4
@@ -17,7 +12,6 @@ langchain==0.0.225
 typing_extensions>=4.5
 openai~=1.60.1
 plotly
-
 omegaconf~=2.3.0
 sqlalchemy~=2.0.40
 tqdm~=4.67.1

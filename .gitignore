@@ -109,6 +109,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+venv10/
 
 # Spyder project settings
 .spyderproject
@@ -140,4 +141,10 @@ outputs
 
 # generated dot files and tree graphs
 .gv
-.png
+.png0
+
+# apptainer files
+*.sif
+apptainer/tmp/
+apptainer/container.sif/
+apptainer/var_tmp/

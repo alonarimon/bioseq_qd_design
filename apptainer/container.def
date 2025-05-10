@@ -1,49 +1,56 @@
 Bootstrap: docker
-From: ubuntu:22.04
+From: nvidia/cuda:12.5.1-cudnn-devel-ubuntu22.04
 
 %help
-	Apptainer definition file example to be used with `build_container.sh`, `shell_container.sh` and `hpc.sh`.
+    Apptainer container for bioseq_qd_design with CUDA 12.5, PyTorch 2.6.0, and Helical + mamba-ssm.
 
 %labels
-	Author m.faldor22@imperial.ac.uk
+    Author: alonarimon
+    Description: CUDA 12.5 ready container with bioseq_qd_design package (containing helical with mamba-ssm)
 
 %environment
-	export TZ=Europe/London
-	export OPENBLAS_NUM_THREADS=1
+    export TZ=Europe/London
+    export OPENBLAS_NUM_THREADS=1
 
-	# pyenv
+    # pyenv
 	export PYENV_ROOT="/workdir/.pyenv"
 	export PATH="$PYENV_ROOT/bin:$PATH"
 
-	# venv
-	export VIRTUAL_ENV="/workdir/.venv"
-	export _OLD_VIRTUAL_PATH="$PATH"
-	export PATH="$VIRTUAL_ENV/bin:$PATH"
+    # venv
+    export VIRTUAL_ENV="/workdir/.venv"
+    export _OLD_VIRTUAL_PATH="$PATH"
+    export PATH="$VIRTUAL_ENV/bin:$PATH"
 
-	# python
-	export PYTHONPATH='/workdir'
+    # python
+    export PYTHONPATH='/workdir'
+
+    # cuda
+    export CUDA_HOME="/usr/local/cuda"
+    export PATH="$CUDA_HOME/bin:$PATH"
+    export LD_LIBRARY_PATH="$CUDA_HOME/lib64:$LD_LIBRARY_PATH"
 
 %post
+    export DEBIAN_FRONTEND=noninteractive
 
-	# git
-	export GITHUB_USER=alonarimon
-	export GITHUB_TOKEN=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
-
-	# Debug: Check if environment variables are correctly set
-	echo "GITHUB_USER: $GITHUB_USER"
-  	echo "GITHUB_TOKEN: $GITHUB_TOKEN"
-
-	export DEBIAN_FRONTEND=noninteractive
-
-	# Export environment variables permanently
+    # Export environment variables permanently
 	echo "export WANDB_API_KEY=$WANDB_API_KEY" >> $APPTAINER_ENVIRONMENT
 
-	# Update and install required libraries
-	apt update && apt install -y git curl wget ffmpeg build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+    apt update && apt install -y \
+        git curl wget ffmpeg build-essential ninja-build \
+        python3.11 python3.11-venv python3-pip python3.11-dev
 
-	# Clone repository to /workdir/
-	git clone --recurse-submodules https://$GITHUB_USER:$GITHUB_TOKEN@github.com/alonarimon/bioseq_qd_design /workdir/
-
+    # Clone repository to /workdir/
+    mkdir -p /workdir
+	git clone https://{{ github_user }}:{{ github_token }}@github.com/alonarimon/bioseq_qd_design /workdir/
+	cd /workdir
+    # Rewrite submodule URLs to include token
+    git config -f .gitmodules submodule.design-bench-detached.url https://{{ github_user }}:{{ github_token }}@github.com/alonarimon/design-bench-detached
+    git config -f .gitmodules submodule.external/helical.url https://{{ github_user }}:{{ github_token }}@github.com/alonarimon/helical.git
+    # Sync the updated URLs
+    git submodule sync
+    # Initialize and update submodules
+    git submodule update --init --recursive
+	
 	# Install pyenv
 	export PYENV_ROOT="/workdir/.pyenv"
 	export PATH="$PYENV_ROOT/bin:$PATH"
@@ -53,8 +60,8 @@ From: ubuntu:22.04
 	rm -rf /workdir/.pyenv/.git/
 
 	# Install Python
-	pyenv install 3.10
-	pyenv global 3.10
+	pyenv install 3.11
+	pyenv global 3.11
 
 	# Create a virtual environment
 	python -m venv /workdir/.venv
@@ -62,13 +69,16 @@ From: ubuntu:22.04
 	python -m ensurepip
 	pip cache purge
 
-	pip install --upgrade pip setuptools wheel
-	
-	sudo apt install nvidia-cuda-toolkit
+	# Install project requirements
+	/workdir/.venv/bin/pip install --upgrade pip setuptools wheel
+    /workdir/.venv/bin/pip install --no-cache-dir -r requirements.txt
+    /workdir/.venv/bin/pip install --no-build-isolation mamba-ssm[causal-conv1d]
+    /workdir/.venv/bin/pip install -e ./external/helical
+    /workdir/.venv/bin/pip install -e ./design-bench-detached
 
-	# Install repository
-	cd /workdir/ && pip install --no-cache-dir -r requirements.txt
 
 %runscript
-	# Run main
-	python /workdir/run_elm.py "$@"
+    . /workdir/.venv/bin/activate
+    #TODO: python /workdir/run_elm.py "$@"
+    python /workdir/tests/tests_bioseq/test_one_shot.py "$@"
+

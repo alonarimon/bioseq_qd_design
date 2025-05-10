@@ -255,7 +255,7 @@ class OneShotBioELMConfig(ELMConfig):
         {"env": "qd_bio_rna"},
         "_self_",
     ])
-    qd: Any = CVTMAPElitesConfig(
+    qd: Any = field(default_factory=lambda: CVTMAPElitesConfig(
         qd_name="cvtmapelites",
         n_niches=2000,
         cvt_samples=10000,
@@ -272,8 +272,8 @@ class OneShotBioELMConfig(ELMConfig):
         crossover_parents=2,
         eval_with_oracle=True,
         number_of_final_solutions=128,
-    )
-    env: Any = QDBioRNAEnvConfig(
+    ))
+    env: Any = field(default_factory=lambda: QDBioRNAEnvConfig(
         env_name="qd_bio_rna",
         behavior_space=[
             [0, 1],
@@ -293,7 +293,7 @@ class OneShotBioELMConfig(ELMConfig):
         distance_normalization_constant=14.3378899,
         initial_population_sample_seed=123,
         task='UTR-ResNet-v0-CUSTOM'
-    )
+    ))
 
 defaults_p3 = [
     {"model": "prompt"},
@@ -321,7 +321,7 @@ class OneShotSimilarityBDELMConfig(ELMConfig):
         {"env": "qd_bio_rna"},
         "_self_",
     ])
-    qd: Any = CVTMAPElitesConfig(
+    qd: Any = field(default_factory=lambda: CVTMAPElitesConfig(
         qd_name="cvtmapelites",
         n_niches=2000,
         cvt_samples=10000,
@@ -338,8 +338,8 @@ class OneShotSimilarityBDELMConfig(ELMConfig):
         crossover_parents=2,
         eval_with_oracle=True,
         number_of_final_solutions=128,
-    )
-    env: Any = QDBioRNAEnvConfig(
+    ))
+    env: Any = field(default_factory=lambda: QDBioRNAEnvConfig(
         env_name="qd_bio_rna",
         behavior_space=[
             [0, 1],
@@ -358,7 +358,7 @@ class OneShotSimilarityBDELMConfig(ELMConfig):
         distance_normalization_constant=14.3378899,
         initial_population_sample_seed=123,
         task='UTR-ResNet-v0-CUSTOM'
-    )
+    ))
 
 
 def register_configstore() -> ConfigStore:
