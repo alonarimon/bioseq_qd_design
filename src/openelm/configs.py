@@ -237,7 +237,8 @@ class ELMConfig(BaseConfig):
     hydra: Any = field(
         default_factory=lambda: {
             "run": {
-                "dir": "logs/elm/${hydra.job.override_dirname:-}/${now:%y-%m-%d_%H-%M}"
+                # Fallback if override_dirname is not set
+                "dir": "logs/elm/${now:%y-%m-%d_%H-%M}"
             }
         }
     )

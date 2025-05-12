@@ -33,7 +33,6 @@ def run_elm():
             "output_dir=test_logs",
             f"run_name=test_{config_name}",
             f"wandb_group=test_suite",
-            f"hydra.job.override_dirname=",
             f"hydra.run.dir=logs/elm/test_{config_name}/{timestamp}",
         ]
 
