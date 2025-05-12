@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+import os
 from typing import Any, Optional
 
 from hydra.core.config_store import ConfigStore
@@ -194,10 +195,10 @@ class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this wil
     sequence_length: int = 50
     alphabet: list[int] = field(default_factory=lambda: [0, 1, 2, 3]) # [A, C, G, U]
     size_of_refs_collection: int =  16384 # Number of reference sequences to use for novelty evaluation and BD
-    offline_data_dir: str = r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42"  # Path to the offline data directory
+    offline_data_dir: str = os.path.join("design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig", "sampled_offline_relabeled_data", "sampled_data_fraction_1_3_seed_42")
     offline_data_x_file: str = "x.npy"  # Name of the offline data X file
     offline_data_y_file: str = "y.npy"  # Name of the offline data Y file
-    oracle_model_path: str = r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig"  # Path to the oracle model
+    oracle_model_path: str = os.path.join("design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig")  # Path to the oracle model
     fitness_model_config: ModelConfig = field(default_factory=lambda: FitnessBioEnsembleConfig())
     bd_type: str = "nucleotides_frequencies" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred). "similarity_based": The phenotype is a vector of the similarity of the sequence to the offline ref data.
     normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
@@ -213,7 +214,7 @@ class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this wil
                 if isinstance(value, str):
                     path = Path(value)
                     if not path.is_absolute():
-                        setattr(self, field_name, str((bioseq_base_dir / path).resolve()))
+                        setattr(self, field_name, os.path.join(bioseq_base_dir, value))
 
 
 @dataclass
@@ -283,10 +284,10 @@ class OneShotBioELMConfig(ELMConfig):
         sequence_length=50,
         alphabet=[0, 1, 2, 3], # [A, C, G, U]
         size_of_refs_collection=16384,
-        offline_data_dir=r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42",
-        offline_data_x_file="x.npy",
-        offline_data_y_file="y.npy",
-        oracle_model_path=r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig",
+        offline_data_dir= os.path.join("design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig", "sampled_offline_relabeled_data", "sampled_data_fraction_1_3_seed_42"),
+        offline_data_x_file= "x.npy",
+        offline_data_y_file= "y.npy",
+        oracle_model_path= os.path.join("design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig"), 
         fitness_model_config=FitnessBioEnsembleConfig(),
         bd_type="nucleotides_frequencies",
         normalize_bd=True,
@@ -348,10 +349,10 @@ class OneShotSimilarityBDELMConfig(ELMConfig):
         sequence_length=50,
         alphabet=[0, 1, 2, 3], # [A, C, G, U]
         size_of_refs_collection=16384,
-        offline_data_dir=r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig\sampled_offline_relabeled_data\sampled_data_fraction_1_3_seed_42",
-        offline_data_x_file="x.npy",
-        offline_data_y_file="y.npy",
-        oracle_model_path=r"design-bench-detached\design_bench_data\utr\oracle_data\original_v0_minmax_orig",
+        offline_data_dir= os.path.join("design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig", "sampled_offline_relabeled_data", "sampled_data_fraction_1_3_seed_42"),
+        offline_data_x_file= "x.npy",
+        offline_data_y_file= "y.npy",
+        oracle_model_path= os.path.join("design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig"),
         fitness_model_config=FitnessBioEnsembleConfig(),
         bd_type="similarity_based",
         normalize_bd=True,

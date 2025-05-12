@@ -44,8 +44,6 @@ def run_elm():
         if result.returncode != 0:
             print(f"❌ Test for {config_name} failed")
             print(result.stderr)
-        else:
-            print(f"✅ Test for {config_name} passed")
 
         # Save directory path for later comparison
         run_dirs[config_name] = os.path.join(output_dir, "oracle_evaluations", "oracle_evaluation.json")
@@ -60,21 +58,34 @@ def load_json(filepath):
         return json.load(f)
 
 
-def compare_results(new_results, reference_results):
-    if new_results == reference_results:
-        print("✅ New results match the reference exactly.")
-    else:
-        print("⚠ Differences found between new results and reference!")
-        # Print differences (simple key-wise comparison)
-        for key in new_results:
-            if key in reference_results:
-                if new_results[key] != reference_results[key]:
-                    print(f"  Key '{key}' differs: new={new_results[key]}, ref={reference_results[key]}")
-            else:
-                print(f"  Key '{key}' is missing in reference.")
-        for key in reference_results:
-            if key not in new_results:
-                print(f"  Key '{key}' is missing in new results.")
+def compare_results(new_results, reference_results, tolerance=0.0000001):
+    """
+    Compare new results with reference results.
+    :param new_results: New results to compare.
+    :param reference_results: Reference results to compare against.
+    :return: True if results match, False otherwise.
+    """
+    # Check if both are dictionaries
+    if not isinstance(new_results, dict) or not isinstance(reference_results, dict):
+        raise ValueError("Both new_results and reference_results should be dictionaries.")
+    # Check if they have the same keys
+    if new_results.keys() != reference_results.keys():
+        print("⚠ Keys do not match between new results and reference!")
+        return False
+    # Compare values
+    for key in new_results:
+        if isinstance(new_results[key], (int, float)) and isinstance(reference_results[key], (int, float)):
+            if abs(new_results[key] - reference_results[key]) > tolerance:
+                print(f"⚠ Key '{key}' differs: new={new_results[key]}, ref={reference_results[key]}")
+                return False
+        elif isinstance(new_results[key], dict) and isinstance(reference_results[key], dict):
+            if not compare_results(new_results[key], reference_results[key]):
+                return False
+        else:
+            if new_results[key] != reference_results[key]:
+                print(f"⚠ Key '{key}' differs: new={new_results[key]}, ref={reference_results[key]}")
+                return False
+    return True
 
 
 
@@ -94,7 +105,13 @@ def test_oneshot():
         reference_results = load_json(reference_paths[config_name])
 
         print(f"Comparing results for {config_name}...")
-        compare_results(new_results, reference_results)
+        match = compare_results(new_results, reference_results)
+        if match:
+            print(f"✅ Test for {config_name} passed.")
+        else:
+            print(f"❌ Test for {config_name} failed.")
+            print("See differences above.")
+            raise AssertionError(f"Test for {config_name} failed. Results do not match.")
 
 if __name__ == "__main__":
     test_oneshot()
