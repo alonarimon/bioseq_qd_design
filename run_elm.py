@@ -30,7 +30,12 @@ def main(config):
 
     # Set up wandb
     config_dict = OmegaConf.to_container(config, resolve=True)
-    wandb.init(project="bioseq_qd_design", name=config.run_name, group=config.wandb_group, config=config_dict)
+    wandb_group = config.wandb_group
+    run_name = config.run_name
+    if config.env.env_name == "qd_bio_rna":
+        run_group = f"{wandb_group}_{config.env.task}"
+        run_name = f"{run_name}_{config.env.bd_type}_{config.env.fitness_model_config.model_name}"
+    wandb.init(project="bioseq_qd_design", name=run_name, group=run_group, config=config_dict)
     wandb.config.update(config_dict)
 
     config.output_dir = HydraConfig.get().runtime.output_dir
