@@ -132,7 +132,7 @@ dmypy.json
 # Project dirs
 .vscode
 checkpoints/
-logs/
+logs/elm/
 wandb/
 archive/
 data/

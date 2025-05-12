@@ -8,11 +8,13 @@ project_root = os.path.abspath(os.path.join(pathlib.Path(__file__).parent.absolu
 
 @dataclass
 class HelixFineTuneConfig:
-    debug: bool = False
+    debug: bool = False,
+    wandb: bool = True,
+    seed: int = 42,
     batch_size: int = 32
     val_batch_size: int = 1
-    val_fraction: float = 0.3
-    epochs: int = 5
+    val_fraction: float = 0.0
+    epochs: int = 50
     max_length: int = 50
     loss: str = "mse"
     output_size: int = 1

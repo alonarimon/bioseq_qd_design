@@ -61,7 +61,7 @@ class BioRandomModelConfig(ModelConfig):
 class FitnessBioEnsembleConfig(ModelConfig):
     model_type: str = "bio_ensemble"  # Can be "hf", "openai", etc
     model_name: str = "fitness_bio_ensemble"
-    model_path: str = r"src/openelm/environments/bioseq/utr_fitness_function/one_shot_scoring_ensemble/scoring_models"  # Path to the scoring model
+    model_path: str = os.path.join("src", "openelm", "environments", "bioseq", "utr_fitness_function", "one_shot_scoring_ensemble", "scoring_models")
     ensemble_size: int = 4 # Number of scoring models to use for fitness evaluation #todo: 18
     beta: float = 2.0  # Penalty term factor
     alphabet_size: int = 4 # Size of the alphabet (e.g., 4 for nucleotides ACGU)
@@ -72,7 +72,7 @@ class FitnessBioEnsembleConfig(ModelConfig):
 class FitnessHelixMRNAConfig(ModelConfig):
     model_type: str = "helix_mrna"
     model_name: str = "fitness_helix_mrna"
-    model_path: str = r"logs\helix_mrna_fine_tune\exp_2025-04-21_11-15-25\model"
+    model_path: str = os.path.join(bioseq_base_dir, "logs", "helix_mrna_fine_tune", "exp_2025-05-12_15-03-29", "model", "best_model.pth")
     batch_size: int = 1
 
 @dataclass

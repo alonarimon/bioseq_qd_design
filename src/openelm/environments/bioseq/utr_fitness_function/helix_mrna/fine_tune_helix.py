@@ -7,7 +7,11 @@ import torch
 import torch.nn.modules.loss as torch_loss
 import os
 import logging
+import wandb
 
+from helical.models.helix_mrna import HelixmRNAFineTuningModel, HelixmRNAConfig
+from openelm.environments.bioseq.utr_fitness_function.helix_mrna.configs import HelixFineTuneConfig
+from openelm.utils.plots import plot_learning_curves
 
 # todo: make better solution for adding the project root to sys.path
 current_file = os.path.abspath(__file__)
@@ -17,11 +21,6 @@ if project_root not in sys.path:
 
 print(f"Project root: {project_root}")
 print("PYTHONPATH (sys.path):", sys.path[:3])
-
-from helical.models.helix_mrna import HelixmRNAFineTuningModel, HelixmRNAConfig
-from openelm.environments.bioseq.utr_fitness_function.helix_mrna.configs import HelixFineTuneConfig
-from openelm.utils.plots import plot_learning_curves
-
 
 
 # === Load Config ===
@@ -53,6 +52,18 @@ logger.addHandler(console_handler)
 
 logger.info(f"Logging initialized. Logs will be saved to {log_file_path}")
 
+# === Initialize Weights and Biases ===
+if config.wandb:
+    wandb.init(
+        project="bioseq_qd_design",
+        group="fine_tune_helix-mRNA",
+        name=f"e_{config.epochs}_b_{config.batch_size}_seed_{config.seed}_val_f_{config.val_fraction}_{timestamp}",
+        config=asdict(config),
+        dir=exp_dir,
+        reinit=True,
+    )
+    wandb.config.update(asdict(config))
+    logger.info(f"WandB initialized. Run ID: {wandb.run.id}")
 
 # === Save config to experiment folder ===
 with open(os.path.join(exp_dir, "config.json"), "w") as f:
@@ -101,7 +112,11 @@ model = HelixmRNAFineTuningModel(
     output_size=config.output_size
 )
 train_dataset = model.process_data(input_sequences_train)
-val_dataset = model.process_data(input_sequences_val)
+if config.val_fraction > 0:
+    val_dataset = model.process_data(input_sequences_val)
+else:
+    val_dataset = None
+
 if config.loss == "mse":
     loss = torch_loss.MSELoss()
 else:

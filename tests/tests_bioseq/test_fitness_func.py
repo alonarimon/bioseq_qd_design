@@ -113,7 +113,7 @@ def evaluate_fitness_funcs(fitness_configs: ModelConfig, val_x: np.ndarray, val_
 
     return mse, spearman_corr, pearson_corr
 
-@pytest.mark.parametrize("n_samples", [4])  # int for number of samples or None for all
+@pytest.mark.parametrize("n_samples", [4, None])  # int for number of samples or None for all
 @pytest.mark.parametrize("config_class", [FitnessBioEnsembleConfig, FitnessHelixMRNAConfig])
 def test_fitness_funcs_on_val(validation_data_utr, config_class, n_samples):
 
