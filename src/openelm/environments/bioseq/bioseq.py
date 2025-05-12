@@ -103,12 +103,13 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         :return: Normalization constant.
         """
         dists = []
+        offline_data = self.offline_data_x_gen
         if subsample:
             sampled_indexes = self.rng.choice(self.offline_data_x.shape[0], size=(self.config.size_of_refs_collection * 2), replace=False)
             offline_data = self.offline_data_x[sampled_indexes]
-        for i in tqdm(range(len(self.offline_data_x)), desc="Calculating R normalization constant"):
-            for j in range(i + 1, len(self.offline_data_x)):
-                    dist = Levenshtein.distance(self.offline_data_x[i], self.offline_data_x[j])
+        for i in tqdm(range(len(offline_data)), desc="Calculating R normalization constant"):
+            for j in range(i + 1, len(offline_data)):
+                    dist = Levenshtein.distance(offline_data[i], offline_data[j])
                     dists.append(dist)
 
         R_normalization_constant = np.mean(dists) / 2
