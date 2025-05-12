@@ -547,7 +547,7 @@ class MAPElitesBase:
             "nonzero": self.nonzero.array,
         }
         # Save maps as pickle file
-        artifact = wandb.Artifact(f"{self.name}_results", type=f"map_snapshots_step_{step}")
+        artifact = wandb.Artifact(f"{self.name}_results_step_{step}", type=f"map_snapshots")
         try:
             maps_file = output_folder / f"{self.name}_maps.pkl"
             with open(maps_file, "wb") as f:
