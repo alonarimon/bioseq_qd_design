@@ -5,6 +5,11 @@ OPTS=$(getopt -o w -l writable -- "$@")
 if [ $? != 0 ]; then echo "Failed to parse arguments." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
+# Make sure WANDB_API_KEY is set before launching
+if [[ -z "${WANDB_API_KEY}" ]]; then
+	echo "Warning: WANDB_API_KEY is not set in your environment." >&2
+fi
+
 # Extract options
 writable_flag=""
 while true ; do
@@ -21,6 +26,7 @@ done
 # Shell into the container
 apptainer shell \
 	--bind $(pwd):/workdir/ \
+	--env WANDB_API_KEY="${WANDB_API_KEY}" \
 	--cleanenv \
 	--containall \
 	--home /tmp/ \
