@@ -59,6 +59,7 @@ From: nvidia/cuda:12.5.1-cudnn-devel-ubuntu22.04
     python3.11 -m pip install --no-build-isolation mamba-ssm[causal-conv1d]
     python3.11 -m pip install -e ./external/helical
     python3.11 -m pip install -e ./design-bench-detached
+    python3.11 -m pip install -e .
 
     # remove git metadata from final container
     rm -rf .git
