@@ -69,6 +69,15 @@ if config.wandb:
 with open(os.path.join(exp_dir, "config.json"), "w") as f:
     json.dump(asdict(config), f, indent=4)
 
+# === Set random seed ===
+def set_seed(seed):
+    """Set the random seed for reproducibility."""
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+set_seed(config.seed)
+
 # === Load data ===
 x = np.load(os.path.join(config.data_dir, "x.npy"))
 y = np.load(os.path.join(config.data_dir, "y.npy")).flatten()

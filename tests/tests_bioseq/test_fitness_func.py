@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 from pathlib import Path
 
 import numpy as np
@@ -12,7 +13,8 @@ from openelm.environments.bioseq.bioseq import logger, RNAGenotype
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import get_fitness_model
 import logging
 
-bioseq_base_dir = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
+bioseq_base_dir = Path("/workdir")
+
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -47,8 +49,8 @@ EXPECTED_RESULTS = {
         None: {"mse": 0.008355, "spearman": 0.767470, "pearson": 0.823375}, # all samples
     },
     "fitness_helix_mrna": {
-        4: {"mse": 0.001624, "spearman": 0.800000, "pearson": 0.882930}, # first 4 samples
-        None: {"mse": 0.003593, "spearman": 0.874574, "pearson": 0.884289}, # all samples
+        4: {"mse":0.000847, "spearman": 0.800000, "pearson": 0.910743}, # first 4 samples
+        None: {"mse": 0.003716, "spearman": 0.855963, "pearson":  0.861107}, # all samples
     }
 }
 
@@ -56,11 +58,11 @@ EXPECTED_RESULTS = {
 @pytest.fixture(scope="module")
 def validation_data_utr():
     logger.info(f"base_dir: {bioseq_base_dir}")
-    utr_relabeled_data_path = bioseq_base_dir / "design-bench-detached" / "design_bench_data" / "utr" / "oracle_data" / "original_v0_minmax_orig" / "sampled_offline_relabeled_data" / "sampled_data_fraction_1_3_seed_42"
+    utr_relabeled_data_path = os.path.join(bioseq_base_dir, "design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig", "sampled_offline_relabeled_data", "sampled_data_fraction_1_3_seed_42")
     logger.info(f"utr_relabeled_data_path: {utr_relabeled_data_path}")
 
-    val_x = np.load(utr_relabeled_data_path / "sampled_validation_x.npy")
-    val_y = np.load(utr_relabeled_data_path / "sampled_validation_y.npy")
+    val_x = np.load(os.path.join(utr_relabeled_data_path, "sampled_validation_x.npy"))
+    val_y = np.load(os.path.join(utr_relabeled_data_path, "sampled_validation_y.npy"))
 
     return val_x, val_y
 
@@ -135,8 +137,6 @@ def test_fitness_funcs_on_val(validation_data_utr, config_class, n_samples):
     assert pearson_corr == pytest.approx(expected["pearson"], abs=1e-6)
 
     logger.info(f"Test passed for {config.model_name} with {n_samples} samples!")
-
-
 
 
 

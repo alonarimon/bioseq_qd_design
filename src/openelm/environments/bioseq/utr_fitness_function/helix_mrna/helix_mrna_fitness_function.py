@@ -66,7 +66,7 @@ class HelixMRNAFitnessFunction(FitnessModel[RNAGenotype]):
         sequences_str = [str(g) for g in genotypes]#todo: not efficient,  - better to work only with strings
         input_dataset = self.model.process_data(sequences_str)
         with torch.no_grad():
-            output = self.model.get_outputs(input_dataset)[0].item()
+            output = self.model.get_outputs(input_dataset)
         if self.config.batch_size == 1:
             output = [output]
         else:

@@ -72,8 +72,8 @@ class FitnessBioEnsembleConfig(ModelConfig):
 class FitnessHelixMRNAConfig(ModelConfig):
     model_type: str = "helix_mrna"
     model_name: str = "fitness_helix_mrna"
-    model_path: str = os.path.join(bioseq_base_dir, "logs", "helix_mrna_fine_tune", "exp_2025-05-12_15-03-29", "model", "best_model.pth")
-    batch_size: int = 1
+    model_path: str = os.path.join(bioseq_base_dir, "logs", "helix_mrna_fine_tune", "exp_2025-05-12_16-25-14", "model")
+    batch_size: int = 128
 
 @dataclass
 class QDConfig(BaseConfig):
