@@ -78,7 +78,7 @@ class FitnessHelixMRNAConfig(ModelConfig):
 @dataclass
 class QDConfig(BaseConfig):
     init_steps: int = 1 
-    total_steps: int =  100  #100000
+    total_steps: int =  20000  #100000
     history_length: int = 1
     save_history: bool = False
     save_snapshot_interval: int = 5000
@@ -204,7 +204,7 @@ class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this wil
     normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
     distance_normalization_constant: float = 14.3378899  # Constant for distance normalization (for the similarity-based BD). -1 means constant will be automatically calculated from the offline data.
     initial_population_sample_seed: int = 123  # initial population sample seed
-    task: str = 'TFBind10-Exact-v0' # 'UTR-ResNet-v0-CUSTOM' or 'TFBind10-Exact-v0'
+    task: str = 'UTR-ResNet-v0-CUSTOM' # 'UTR-ResNet-v0-CUSTOM' or 'TFBind10-Exact-v0'
 
     def __post_init__(self):
         path_fields = ['offline_data_dir', 'oracle_model_path']

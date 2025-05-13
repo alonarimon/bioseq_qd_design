@@ -21,6 +21,8 @@ From: nvidia/cuda:12.5.1-cudnn-devel-ubuntu22.04
     export LD_LIBRARY_PATH="$CUDA_HOME/lib64:$LD_LIBRARY_PATH"
 
 %post
+    commit="{{ commit }}"
+    echo "commit = " commit
     export DEBIAN_FRONTEND=noninteractive
     
    # Add Python 3.11 and pip
@@ -45,9 +47,15 @@ From: nvidia/cuda:12.5.1-cudnn-devel-ubuntu22.04
 	git clone https://{{ github_user }}:{{ github_token }}@github.com/alonarimon/bioseq_qd_design /workdir/
 	cd /workdir
 
+    # Checkout specific commit if provided
+    if [ -n "${commit}" ]; then
+        git checkout ${commit}
+    fi
+
     # Rewrite submodule URLs to include token
     git config -f .gitmodules submodule.design-bench-detached.url https://{{ github_user }}:{{ github_token }}@github.com/alonarimon/design-bench-detached
     git config -f .gitmodules submodule.external/helical.url https://{{ github_user }}:{{ github_token }}@github.com/alonarimon/helical.git
+
     # Sync the updated URLs
     git submodule sync
     # Initialize and update submodules
