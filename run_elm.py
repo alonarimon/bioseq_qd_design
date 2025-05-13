@@ -17,7 +17,9 @@ import wandb
 import hydra
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import OmegaConf
-
+import torch
+print(torch.cuda.device_count())
+print(torch.cuda.get_device_name(0)) 
 
 from openelm import ELM
 
