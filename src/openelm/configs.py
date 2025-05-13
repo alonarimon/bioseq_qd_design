@@ -42,17 +42,6 @@ class ModelConfig(BaseConfig):
 
 
 @dataclass
-class PromptModelConfig(ModelConfig):
-    model_name: str = "prompt"
-    model_path: str = "Salesforce/codegen-350M-mono"
-
-
-@dataclass
-class DiffModelConfig(ModelConfig):
-    model_name: str = "diff"
-    model_path: str = "CarperAI/diff-codegen-350m-v2"
-
-@dataclass
 class BioRandomModelConfig(ModelConfig):
     model_name: str = "bio_random"
     model_path: str = "bio_random"
@@ -118,62 +107,6 @@ class EnvConfig(BaseConfig):
     debug: bool = False
     seed: Optional[int] = 42
 
-
-@dataclass
-class SodaraceEnvConfig(EnvConfig):
-    env_name: str = "sodarace"
-    eval_ms: int = 1000  # Milliseconds
-    behavior_space: list[list[float]] = field(
-        default_factory=lambda: [
-            # Height, Width, Mass dimensions
-            [0, 500],
-            [0, 500],
-            [0, 1000],
-        ]
-    )
-    starting_seeds: list[str] = field(default_factory=lambda: ["square"])
-    instruction: int = 2
-    crossover: bool = False
-
-
-@dataclass
-class ImageEnvConfig(EnvConfig):
-    env_name: str = "image_evolution"
-    behavior_mode: str = "3-channel"
-    target: str = "circle"
-
-
-@dataclass
-class StringEnvConfig(EnvConfig):
-    env_name: str = "string_evolution"
-    target: str = "MapElites"
-
-
-@dataclass
-class P3ProblemEnvConfig(EnvConfig):
-    env_name: str = "p3_problem"
-    prompt_size: str = "long"  # med or long
-    timeout: float = 1.0  # timeout for running a solution
-    starting_seed: int = field(
-        default_factory=lambda: 3
-    )  # index of p3 dataset to use as puzzle to mutate
-    embedding_model_type: str = "hf"  # openai or hf
-    embedding_model_path: str = MISSING  # e.g. hf: Salesforce/codegen-350M-mono ; openai: text-embedding-ada-002
-
-
-@dataclass
-class P3ProbSolEnvConfig(EnvConfig):
-    env_name: str = "p3_probsol"
-    prompt_size: str = "long"  # med or long
-    timeout: float = 1.0  # timeout for running a solution
-    starting_seed: int = field(
-        default_factory=lambda: 3
-    )  # index of p3 dataset to use as puzzle to mutate
-    eval_k: int = 100  # k for pass@k for fitness
-    embedding_model_type: str = "hf"  # openai or hf
-    embedding_model_path: str = MISSING  # e.g. hf: Salesforce/codegen-350M-mono ; openai: text-embedding-ada-002
-
-
 @dataclass
 class QDEnvConfig(EnvConfig):
     env_name: str = "qdaif"
@@ -215,13 +148,6 @@ class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this wil
                     path = Path(value)
                     if not path.is_absolute():
                         setattr(self, field_name, os.path.join(bioseq_base_dir, value))
-
-
-@dataclass
-class PromptEnvConfig(EnvConfig):
-    env_name: str = "prompt_evolution"
-    task_name: str = "antonym"  # toy or antonym or animal or cot
-    evals_per_prompt: int = 10
 
 
 defaults_elm = [
@@ -300,23 +226,6 @@ class OneShotBioELMConfig(ELMConfig):
         task='UTR-ResNet-v0-CUSTOM'
     ))
 
-defaults_p3 = [
-    {"model": "prompt"},
-    {"env": "p3"},
-    "_self_",
-]
-
-
-@dataclass
-class P3Config(BaseConfig):
-    hydra: Any = field(
-        default_factory=lambda: {
-            "run": {
-                "dir": "logs/p3/${hydra.job.override_dirname}/${now:%y-%m-%d_%H-%M}"
-            }
-        }
-    )
-
 
 @dataclass
 class OneShotSimilarityBDELMConfig(ELMConfig):
@@ -369,23 +278,15 @@ class OneShotSimilarityBDELMConfig(ELMConfig):
 def register_configstore() -> ConfigStore:
     """Register configs with Hydra's ConfigStore."""
     cs = ConfigStore.instance()
-    cs.store(group="env", name="sodarace", node=SodaraceEnvConfig)
-    cs.store(group="env", name="image_evolution", node=ImageEnvConfig)
-    cs.store(group="env", name="string_evolution", node=StringEnvConfig)
-    cs.store(group="env", name="p3_probsol", node=P3ProbSolEnvConfig)
-    cs.store(group="env", name="p3_problem", node=P3ProblemEnvConfig)
-    cs.store(group="env", name="prompt_evolution", node=PromptEnvConfig)
+
     cs.store(group="env", name="qdaif", node=QDEnvConfig)
     cs.store(group="env", name="qd_bio_rna", node=QDBioRNAEnvConfig)
     cs.store(group="qd", name="mapelites", node=MAPElitesConfig)
     cs.store(group="qd", name="cvtmapelites", node=CVTMAPElitesConfig)
-    cs.store(group="model", name="prompt", node=PromptModelConfig)
-    cs.store(group="model", name="diff", node=DiffModelConfig)
     cs.store(group="mutation_model", name="bio_random", node=BioRandomModelConfig)
     cs.store(group="fitness_model", name="fitness_bio_ensemble", node=FitnessBioEnsembleConfig)
     cs.store(group="fitness_model", name="fitness_helix_mrna", node=FitnessHelixMRNAConfig)
     cs.store(name="elmconfig", node=ELMConfig)
-    cs.store(name="p3config", node=P3Config)
     cs.store(name="oneshot_bio_elmconfig", node=OneShotBioELMConfig)
     cs.store(name="oneshot_similarity_bd_elmconfig", node=OneShotSimilarityBDELMConfig)
 

@@ -12,7 +12,7 @@ import numpy as np
 import requests
 import logging
 
-from openelm.configs import EnvConfig, StringEnvConfig
+from openelm.configs import EnvConfig
 from openelm.environments.utils import NULL_SEED, get_image_target
 from openelm.utils.code_eval import pool_exec_processes
 
@@ -187,41 +187,3 @@ class StringArrayGenotype(ArrayGenotype):
 
     def to_phenotype(self) -> Phenotype:
         return np.asarray(self)
-
-
-class MatchString(BaseEnvironment[StringArrayGenotype]):
-    # find a string by mutating one character at a time
-
-    def __init__(self, config: StringEnvConfig):
-        self.alphabet = string.ascii_letters
-
-        self.config: StringEnvConfig = config
-        self.batch_size = self.config.batch_size
-        self.target = np.array([self.alphabet.index(ch) for ch in self.config.target])
-        self.genotype_ndim = self.target.shape[0]
-        self.genotype_space = np.repeat(
-            [[0, len(self.alphabet)]], self.genotype_ndim, axis=0
-        ).T
-        self.rng = np.random.default_rng(self.config.seed)
-
-    def get_rng_state(self) -> Optional[np.random._generator.Generator]:
-        return self.rng
-
-    def set_rng_state(self, rng_state: Optional[np.random._generator.Generator]):
-        self.rng = rng_state
-
-    def random(self) -> list[StringArrayGenotype]:
-        return [
-            StringArrayGenotype(self.rng.uniform(*self.genotype_space))
-            for _ in range(self.batch_size)
-        ]
-
-    def mutate(self, genomes: list[StringArrayGenotype]) -> list[StringArrayGenotype]:
-        x = deepcopy(genomes)
-        for i in range(self.batch_size):
-            ix = self.rng.integers(self.genotype_ndim)
-            x[i][ix] = x[i][ix] + self.rng.uniform(-1, 1)
-        return x
-
-    def fitness(self, x: StringArrayGenotype) -> float:
-        return -np.abs(x.to_phenotype() - self.target).sum()
