@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+{{ pbs_job_name }}
+{{ pbs_walltime }}
+{{ pbs_resources }}
+{{ pbs_job_array }}
+
+module load apptainer
+
+# Transfer files from server to compute node
+stagein()
+{
+	# Copy container from server to compute node
+	cmd="cp $HOME/projects/{{ repository_name }}/output/{{ container_directory }}/{{ container_name }} $TMPDIR"
+	echo $(date +"%Y-%m-%d %H:%M:%S") stagein: $cmd
+	eval $cmd
+
+	# Create symbolic link to output/ directory from server in compute node
+	cmd="ln -s $HOME/projects/{{ repository_name }}/output/{{ container_directory }}/ $TMPDIR/output"
+	echo $(date +"%Y-%m-%d %H:%M:%S") runprogram: $cmd
+	eval $cmd
+}
+
+# Run container
+runprogram()
+{
+	# ls
+	cmd="ls --almost-all --color=auto --classify --group-directories-first --human-readable -l --literal --show-control-chars --tabsize=0"
+	echo $(date +"%Y-%m-%d %H:%M:%S") runprogram: $cmd
+	eval $cmd
+
+	# nvidia-smi
+	cmd="nvidia-smi"
+	echo $(date +"%Y-%m-%d %H:%M:%S") runprogram: $cmd
+	eval $cmd
+
+	# Run container
+	apptainer_workdir=$(mktemp -d -p "${TMPDIR:-/tmp}")
+	if ! command -v apptainer &> /dev/null; then
+		alias apptainer=singularity
+	fi
+	cmd="time APPTAINERENV_PBS_JOB_INDEX=$PBS_JOB_INDEX APPTAINERENV_PBS_ARRAY_INDEX=$PBS_ARRAY_INDEX apptainer -d run {{ app }} --bind $TMPDIR/output:/workdir/output/ --cleanenv --containall --home /tmp/ --no-home --nv --pwd /workdir/ --workdir $apptainer_workdir $TMPDIR/{{ container_name }} +commit={{ commit }} {{ args }}"
+	echo $(date +"%Y-%m-%d %H:%M:%S") runprogram: $cmd
+	eval $cmd
+}
+
+# Transfer files from compute node to server and exit
+stageout()
+{
+	echo $(date +"%Y-%m-%d %H:%M:%S") stageout
+}
+
+stagein
+runprogram
+stageout 
+exit

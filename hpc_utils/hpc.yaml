@@ -1,0 +1,13 @@
+hpc: login.hpc.imperial.ac.uk
+
+job_name: DCG-MAP-Elites
+walltime: 07:59:00
+resources: select=1:ncpus=4:mem=16gb:ngpus=1:gpu_type=RTX6000
+job_array: 1-5  # null
+kwargs: null  # -q express -P exp-00097
+
+app: train  # null
+args:
+  - "seed=\$RANDOM algo=dcg_me env=ant_omni"
+  - "seed=\$RANDOM algo=pga_me env=ant_omni"
+  - "seed=\$RANDOM algo=me env=ant_omni"
