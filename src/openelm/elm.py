@@ -2,8 +2,7 @@ from typing import Any, Optional, Type
 
 from hydra.core.hydra_config import HydraConfig
 
-from openelm.configs import DiffModelConfig, ELMConfig, FitnessHelixMRNAConfig, PromptModelConfig, BioRandomModelConfig
-from openelm.mutation_model import DiffModel, MutationModel, PromptModel, RandomSequenceMutator
+from openelm.configs import ELMConfig
 from openelm.environments.base import BaseEnvironment
 
 

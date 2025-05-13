@@ -55,7 +55,9 @@ class DiffModelConfig(ModelConfig):
 @dataclass
 class BioRandomModelConfig(ModelConfig):
     model_name: str = "bio_random"
-    model_path: str = "bio_random" #todo
+    model_path: str = "bio_random"
+    alphabet: list[int] = field(default_factory=lambda: [0, 1, 2, 3]) # [A, C, G, U]
+
 
 @dataclass
 class FitnessBioEnsembleConfig(ModelConfig):

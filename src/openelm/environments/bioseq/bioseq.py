@@ -16,9 +16,9 @@ from design_bench.oracles.tensorflow import ResNetOracle
 
 
 from openelm.configs import ModelConfig, QDEnvConfig, QDBioRNAEnvConfig
-from openelm.environments.base import BaseEnvironment, Phenotype, Genotype
+from openelm.environments.base import BaseEnvironment, Phenotype
 from openelm.environments.bioseq.genotypes import BioSeqGenotype, RNAGenotype, DNAGenotype
-from openelm.mutation_model import MutationModel, get_model
+from openelm.mutation_model import get_model
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import get_fitness_model
 from openelm.environments.bioseq.utils.evaluation import evaluate_solutions_set
 
@@ -40,6 +40,9 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         super().__init__() #todo: check if this is needed
         print(f"Initializing RNAEvolution environment with config: {config}")
         self.config = config
+        
+        
+        # models
         self.mutation_model = get_model(mutation_model_config) #todo: not in use
         self.fitness_function = get_fitness_model(fitness_model_config)
 
@@ -47,11 +50,13 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         self.genotype_space = np.array(
             self.config.behavior_space).T  # todo: i think it should be renamed to behavior_space (in the base class)
         self.sequence_length = config.sequence_length
-        self.alphabet = config.alphabet
-        self.rng = np.random.default_rng(config.seed)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info(f"Using device: {self.device}")
+        
         # set all random seeds for reproducibility
+        self.rng = np.random.default_rng(config.seed)
+        self.mutation_model.set_rng_state(self.rng)
+
         torch.manual_seed(config.seed)
         np.random.seed(config.seed)
         if torch.cuda.is_available():
@@ -249,20 +254,8 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         return reference_set.tolist() #todo: work with np arrays instead of lists
 
     def _random_seq(self) -> list[int]:
-        seq = [self.rng.choice(self.alphabet) for _ in range(self.sequence_length)]
+        seq = [self.rng.choice(self.config.alphabet) for _ in range(self.sequence_length)]
         return seq
-
-    def _mutate_seq(self, seq: list[int]) -> list[int]:
-        """
-        Mutate a sequence by randomly changing one letter.
-        :param seq: sequence to mutate
-        """ #todo: 1. change to use mutation model
-        # todo: 2. the 50 steps limitation from the paper should be implemented here
-        i = self.rng.integers(self.sequence_length)
-        new_letter = self.rng.choice([a for a in self.alphabet if a != seq[i]])
-        mutated_seq = seq.copy()
-        mutated_seq[i] = new_letter
-        return mutated_seq
 
     def random(self) -> list[BioSeqGenotype]:
         """
@@ -278,11 +271,11 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
     def mutate(self, genomes: list[BioSeqGenotype]) -> list[BioSeqGenotype]:
         """
         Mutate a list of genomes by applying the mutation function to each genome.
-        """ #todo: change to use mutation model
+        """     # TODO: the 50 steps limitation from the paper should be implemented here
         if self.config.task == 'TFBind10-Exact-v0':
-            return [DNAGenotype(self._mutate_seq(g.sequence)) for g in genomes]
+            return [DNAGenotype(self.mutation_model.mutate(g.sequence)) for g in genomes]
         elif self.config.task == 'UTR-ResNet-v0-CUSTOM':
-            return [RNAGenotype(self._mutate_seq(g.sequence)) for g in genomes]
+            return [RNAGenotype(self.mutation_model.mutate(g.sequence)) for g in genomes]
         else:
             raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v0, UTR-ResNet-v0-CUSTOM")
 
