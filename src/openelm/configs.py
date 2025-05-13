@@ -380,6 +380,7 @@ def register_configstore() -> ConfigStore:
     cs.store(group="model", name="diff", node=DiffModelConfig)
     cs.store(group="model", name="bio_random", node=BioRandomModelConfig)
     cs.store(group="fitness_model", name="fitness_bio_ensemble", node=FitnessBioEnsembleConfig)
+    cs.store(group="fitness_model", name="fitness_helix_mrna", node=FitnessHelixMRNAConfig)
     cs.store(name="elmconfig", node=ELMConfig)
     cs.store(name="p3config", node=P3Config)
     cs.store(name="oneshot_bio_elmconfig", node=OneShotBioELMConfig)

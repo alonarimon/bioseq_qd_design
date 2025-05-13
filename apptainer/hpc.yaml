@@ -1,0 +1,40 @@
+hpc: login.hpc.imperial.ac.uk
+
+job_name: Bioseq-QD-Design
+walltime: 07:59:00
+resources: select=1:ncpus=4:mem=16gb:ngpus=1:gpu_type=RTX6000
+job_array: 1-4  # null
+kwargs: null  # -q express -P exp-00097
+
+app: train  # null
+args:
+  - "seed=\$RANDOM \
+     qd.total_steps=100000 \
+     env.task=UTR-ResNet-v0-CUSTOM \
+     env.bd_type=nucleotides_frequencies \
+     env.behavior_space=[[0,1],[0,1],[0,1]] \
+     env.fitness_model_config=fitness_helix_mrna"
+
+  - "seed=\$RANDOM \
+     qd.total_steps=100000 \
+     env.task=UTR-ResNet-v0-CUSTOM \
+     env.bd_type=nucleotides_frequencies \
+     env.behavior_space=[[0,1],[0,1],[0,1]] \
+     env.fitness_model_config=fitness_bio_ensemble"
+
+  - "seed=\$RANDOM \
+      qd.total_steps=100000 \
+      env.task=UTR-ResNet-v0-CUSTOM \
+      env.bd_type=similarity_based \
+      env.behavior_space=[[0,1],[0,1]] \
+      env.fitness_model_config=fitness_helix_mrna"
+
+  - "seed=\$RANDOM \
+      qd.total_steps=100000 \
+      env.task=UTR-ResNet-v0-CUSTOM \
+      env.bd_type=similarity_based \
+      env.behavior_space=[[0,1],[0,1]] \
+      env.fitness_model_config=fitness_bio_ensemble"
+
+
+ 

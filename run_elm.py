@@ -12,11 +12,12 @@ Python dictionaries are evolved over.
 import logging
 import os
 from datetime import datetime
-
+import subprocess
 import wandb
 import hydra
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import OmegaConf
+
 
 from openelm import ELM
 
@@ -27,6 +28,17 @@ logging.getLogger("helical").setLevel(logging.WARNING)
     version_base="1.2",
 )
 def main(config):
+
+    # Add commit hash to config
+    commit = os.getenv("COMMIT_HASH") 
+    if not commit:
+        try:
+            commit = subprocess.getoutput("git rev-parse --short HEAD")
+        except Exception:
+            commit = "unknown"
+
+    # Append commit to run_name
+    config.run_name = f"{config.run_name}_{commit}"
 
     # Set up wandb
     config_dict = OmegaConf.to_container(config, resolve=True)
