@@ -2,7 +2,7 @@ from typing import Any, Optional, Type
 
 from hydra.core.hydra_config import HydraConfig
 
-from openelm.configs import DiffModelConfig, ELMConfig, PromptModelConfig, BioRandomModelConfig
+from openelm.configs import DiffModelConfig, ELMConfig, FitnessHelixMRNAConfig, PromptModelConfig, BioRandomModelConfig
 from openelm.mutation_model import DiffModel, MutationModel, PromptModel, RandomSequenceMutator
 from openelm.environments.base import BaseEnvironment
 
@@ -75,31 +75,25 @@ class ELM:
         hydra_conf = HydraConfig.instance()
         if hydra_conf.cfg is not None:
             self.config.qd.output_dir = HydraConfig.get().runtime.output_dir
-        env_name: str = self.config.env.env_name
-        qd_name: str = self.config.qd.qd_name
-        if isinstance(self.config.model, PromptModelConfig):
-            self.mutation_model: MutationModel = PromptModel(self.config.model)
-        elif isinstance(self.config.model, DiffModelConfig):
-            print("Diff model")
-            self.mutation_model = DiffModel(self.config.model)
-        elif isinstance(self.config.model, BioRandomModelConfig):
-            print("BioRandom model")
-            self.mutation_model = RandomSequenceMutator(self.config.model)
+        
         if env is None:
-            self.environment = load_env(env_name)(
+            self.environment = load_env(self.config.env.env_name)(
                 config=self.config.env,
-                mutation_model=self.mutation_model,
+                mutation_model_config=self.config.mutation_model,
+                fitness_model_config=self.config.fitness_model,
             )
         elif isinstance(env, type(BaseEnvironment)):
             self.environment = env(
                 config=self.config.env,
-                mutation_model=self.mutation_model,
+                mutation_model_config=self.config.mutation_model,
+                fitness_model_config=self.config.fitness_model,
             )
         elif isinstance(env, BaseEnvironment):
             self.environment = env
         else:
             raise ValueError(f"Unknown environment {env.__name__}")
-        self.qd_algorithm = load_algorithm(qd_name)(
+        
+        self.qd_algorithm = load_algorithm(self.config.qd.qd_name)(
             env=self.environment,
             config=self.config.qd,
         )

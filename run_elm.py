@@ -48,9 +48,16 @@ def main(config):
     run_name = config.run_name
     if config.env.env_name == "qd_bio_rna":
         run_group = f"{wandb_group}_{config.env.task}"
-        run_name = f"{run_name}_{config.env.bd_type}_{config.env.fitness_model_config.model_name}"
-    wandb.init(project="bioseq_qd_design", name=run_name, group=run_group, config=config_dict)
+        run_name = f"{run_name}_{config.env.bd_type}_{config.fitness_model.model_name}"
+    
+    wandb.init(
+        project="bioseq_qd_design", 
+        name=run_name, 
+        group=run_group, 
+        config=config_dict,
+        mode=config.wandb_mode)  
     wandb.config.update(config_dict)
+    wandb.config["gpu_name"] = torch.cuda.get_device_name(0)
 
     config.output_dir = HydraConfig.get().runtime.output_dir
     print("----------------- Config ---------------")

@@ -78,7 +78,7 @@ class FitnessHelixMRNAConfig(ModelConfig):
 @dataclass
 class QDConfig(BaseConfig):
     init_steps: int = 1 
-    total_steps: int =  20000  #100000
+    total_steps: int =  50000  #100000
     history_length: int = 1
     save_history: bool = False
     save_snapshot_interval: int = 5000
@@ -188,7 +188,6 @@ class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this wil
     behavior_space: list[list[float]] = field(
         default_factory=lambda: [
             [0, 1],
-            [0, 1],
             [0, 1]
         ]
     )
@@ -199,7 +198,6 @@ class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this wil
     offline_data_x_file: str = "x.npy"  # Name of the offline data X file
     offline_data_y_file: str = "y.npy"  # Name of the offline data Y file
     oracle_model_path: str = os.path.join("design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig")  # Path to the oracle model
-    fitness_model_config: ModelConfig = field(default_factory=lambda: FitnessBioEnsembleConfig())
     bd_type: str = "nucleotides_frequencies" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred). "similarity_based": The phenotype is a vector of the similarity of the sequence to the offline ref data.
     normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
     distance_normalization_constant: float = 14.3378899  # Constant for distance normalization (for the similarity-based BD). -1 means constant will be automatically calculated from the offline data.
@@ -225,9 +223,10 @@ class PromptEnvConfig(EnvConfig):
 
 
 defaults_elm = [
-    {"model": "bio_random"},
     {"qd": "cvtmapelites"},
     {"env": "qd_bio_rna"},
+    {"mutation_model": "bio_random"},
+    {"fitness_model": "fitness_bio_ensemble"},
     "_self_",
 ]
 
@@ -243,16 +242,19 @@ class ELMConfig(BaseConfig):
         }
     )
     defaults: list[Any] = field(default_factory=lambda: defaults_elm)
-    model: Any = MISSING
+    mutation_model: Any = MISSING
+    fitness_model: Any = MISSING
     qd: Any = MISSING
     env: Any = MISSING
     run_name: str = datetime.now().strftime("%Y-%m-%d_%H-%M")
     wandb_group: str = "run_elm"
+    wandb_mode: str = "online"
 
 @dataclass
 class OneShotBioELMConfig(ELMConfig):
     defaults: list[Any] = field(default_factory=lambda: [
-        {"model": "bio_random"},
+        {"mutation_model": "bio_random"},
+        {"fitness_model": "fitness_bio_ensemble"},
         {"qd": "cvtmapelites"},
         {"env": "qd_bio_rna"},
         "_self_",
@@ -289,7 +291,6 @@ class OneShotBioELMConfig(ELMConfig):
         offline_data_x_file= "x.npy",
         offline_data_y_file= "y.npy",
         oracle_model_path= os.path.join("design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig"), 
-        fitness_model_config=FitnessBioEnsembleConfig(),
         bd_type="nucleotides_frequencies",
         normalize_bd=True,
         distance_normalization_constant=14.3378899,
@@ -318,7 +319,8 @@ class P3Config(BaseConfig):
 @dataclass
 class OneShotSimilarityBDELMConfig(ELMConfig):
     defaults: list[Any] = field(default_factory=lambda: [
-        {"model": "bio_random"},
+        {"mutation_model": "bio_random"},
+        {"fitness_model": "fitness_bio_ensemble"},
         {"qd": "cvtmapelites"},
         {"env": "qd_bio_rna"},
         "_self_",
@@ -354,7 +356,6 @@ class OneShotSimilarityBDELMConfig(ELMConfig):
         offline_data_x_file= "x.npy",
         offline_data_y_file= "y.npy",
         oracle_model_path= os.path.join("design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig"),
-        fitness_model_config=FitnessBioEnsembleConfig(),
         bd_type="similarity_based",
         normalize_bd=True,
         distance_normalization_constant=14.3378899,
@@ -378,7 +379,7 @@ def register_configstore() -> ConfigStore:
     cs.store(group="qd", name="cvtmapelites", node=CVTMAPElitesConfig)
     cs.store(group="model", name="prompt", node=PromptModelConfig)
     cs.store(group="model", name="diff", node=DiffModelConfig)
-    cs.store(group="model", name="bio_random", node=BioRandomModelConfig)
+    cs.store(group="mutation_model", name="bio_random", node=BioRandomModelConfig)
     cs.store(group="fitness_model", name="fitness_bio_ensemble", node=FitnessBioEnsembleConfig)
     cs.store(group="fitness_model", name="fitness_helix_mrna", node=FitnessHelixMRNAConfig)
     cs.store(name="elmconfig", node=ELMConfig)

@@ -15,7 +15,7 @@ from design_bench.disk_resource import DiskResource
 from design_bench.oracles.tensorflow import ResNetOracle
 
 
-from openelm.configs import QDEnvConfig, QDBioRNAEnvConfig
+from openelm.configs import ModelConfig, QDEnvConfig, QDBioRNAEnvConfig
 from openelm.environments.base import BaseEnvironment, Phenotype, Genotype
 from openelm.environments.bioseq.genotypes import BioSeqGenotype, RNAGenotype, DNAGenotype
 from openelm.mutation_model import MutationModel, get_model
@@ -29,7 +29,8 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
     def __init__(
             self,
             config: QDBioRNAEnvConfig,
-            mutation_model: MutationModel #todo: not in use, GET CONFIG?
+            mutation_model_config: ModelConfig, #todo: not in use, GET CONFIG?
+            fitness_model_config: ModelConfig,
     ):
         """
         Args:
@@ -39,8 +40,8 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         super().__init__() #todo: check if this is needed
         print(f"Initializing RNAEvolution environment with config: {config}")
         self.config = config
-        self.mutation_model = get_model(mutation_model.config) #todo: not in use
-        self.fitness_function = get_fitness_model(config.fitness_model_config)
+        self.mutation_model = get_model(mutation_model_config) #todo: not in use
+        self.fitness_function = get_fitness_model(fitness_model_config)
 
         self.batch_size = config.batch_size
         self.genotype_space = np.array(
