@@ -16,7 +16,7 @@ class BaseConfig:
 
 
 @dataclass
-class ModelConfig(BaseConfig):
+class ModelConfig(BaseConfig): #TODO: go over all and remove unused
     fp16: bool = True
     cuda: bool = True
     gpus: int = 1
@@ -24,9 +24,9 @@ class ModelConfig(BaseConfig):
     deterministic: bool = False
     top_p: float = 0.95
     temp: float = 1.1
-    gen_max_len: int = 512
+    gen_max_len: int = 50
     batch_size: int = 128
-    model_type: str = "bio_random"  # Can be "hf", "openai", etc
+    model_name: str = MISSING
     model_path: str = MISSING  # Can be HF model name or path to local model
     logits_only: bool = False
     do_sample: bool = True
@@ -44,9 +44,21 @@ class ModelConfig(BaseConfig):
 @dataclass
 class BioRandomModelConfig(ModelConfig):
     model_name: str = "bio_random"
-    model_path: str = "bio_random"
+    model_path: str = ""
     alphabet: list[int] = field(default_factory=lambda: [0, 1, 2, 3]) # [A, C, G, U]
 
+@dataclass 
+class MutatorHelixConfig(ModelConfig):
+    model_name: str = "mutator_helix_mrna"
+    model_path: str = "" #TODO
+    tokenizer_path: str = "" #TODO
+    mutation_length: int = 5
+    temp : float = 0.6
+    top_k: int = 3
+    logits_threshold: float = 0.8
+    top_p: float = 0.0 # 0.0 = no top-p samplings
+    batch_size: int = 1 #TODO!
+    gen_max_len: int = 50
 
 @dataclass
 class FitnessBioEnsembleConfig(ModelConfig):
@@ -123,7 +135,8 @@ class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this wil
     behavior_space: list[list[float]] = field(
         default_factory=lambda: [
             [0, 1],
-            [0, 1]
+            [0, 1],
+            [0, 1],
         ]
     )
     sequence_length: int = 50
@@ -153,7 +166,7 @@ class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this wil
 defaults_elm = [
     {"qd": "cvtmapelites"},
     {"env": "qd_bio_rna"},
-    {"mutation_model": "bio_random"},
+    {"mutation_model": "mutator_helix_mrna"},
     {"fitness_model": "fitness_bio_ensemble"},
     "_self_",
 ]
@@ -284,6 +297,7 @@ def register_configstore() -> ConfigStore:
     cs.store(group="qd", name="mapelites", node=MAPElitesConfig)
     cs.store(group="qd", name="cvtmapelites", node=CVTMAPElitesConfig)
     cs.store(group="mutation_model", name="bio_random", node=BioRandomModelConfig)
+    cs.store(group="mutation_model", name="mutator_helix_mrna", node=MutatorHelixConfig)
     cs.store(group="fitness_model", name="fitness_bio_ensemble", node=FitnessBioEnsembleConfig)
     cs.store(group="fitness_model", name="fitness_helix_mrna", node=FitnessHelixMRNAConfig)
     cs.store(name="elmconfig", node=ELMConfig)

@@ -48,7 +48,7 @@ def main(config):
     run_name = config.run_name
     if config.env.env_name == "qd_bio_rna":
         run_group = f"{wandb_group}_{config.env.task}"
-        run_name = f"{run_name}_{config.env.bd_type}_{config.fitness_model.model_name}"
+        run_name = f"{run_name}_{config.env.bd_type}_{config.fitness_model.model_name}_{config.mutation_model.model_name}"
     
     wandb.init(
         project="bioseq_qd_design", 

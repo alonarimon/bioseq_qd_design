@@ -18,7 +18,7 @@ from design_bench.oracles.tensorflow import ResNetOracle
 from openelm.configs import ModelConfig, QDEnvConfig, QDBioRNAEnvConfig
 from openelm.environments.base import BaseEnvironment, Phenotype
 from openelm.environments.bioseq.genotypes import BioSeqGenotype, RNAGenotype, DNAGenotype
-from openelm.mutation_model import get_model
+from openelm.mutation_model import get_mutation_model
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import get_fitness_model
 from openelm.environments.bioseq.utils.evaluation import evaluate_solutions_set
 
@@ -43,7 +43,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         
         
         # models
-        self.mutation_model = get_model(mutation_model_config) #todo: not in use
+        self.mutation_model = get_mutation_model(mutation_model_config) #todo: not in use
         self.fitness_function = get_fitness_model(fitness_model_config)
 
         self.batch_size = config.batch_size
@@ -95,7 +95,6 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         logger.info(f"Behavioral descriptor min: {self.bd_min}, max: {self.bd_max}")
 
         self.oracle = self._load_oracle()  # Load the oracle model from disk, for final evaluation on the solutions (not used in the optimization process)
-        # todo: here they originally had 'del mutation_model'. see if it is needed (and if it does - delete it outside the constructor)
 
         if self.batch_size > self.fitness_function.config.batch_size:
             logger.warning(f"Environment batch size {self.batch_size} exceeds the fitness model batch size {self.fitness_function.config.batch_size}.")
@@ -272,12 +271,8 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         """
         Mutate a list of genomes by applying the mutation function to each genome.
         """     # TODO: the 50 steps limitation from the paper should be implemented here
-        if self.config.task == 'TFBind10-Exact-v0':
-            return [DNAGenotype(self.mutation_model.mutate(g.sequence)) for g in genomes]
-        elif self.config.task == 'UTR-ResNet-v0-CUSTOM':
-            return [RNAGenotype(self.mutation_model.mutate(g.sequence)) for g in genomes]
-        else:
-            raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v0, UTR-ResNet-v0-CUSTOM")
+        # TODO: batching
+        return [self.mutation_model.mutate(genome) for genome in genomes]
 
     def fitness(self, x: BioSeqGenotype) -> float:
         """
