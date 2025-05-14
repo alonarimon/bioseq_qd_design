@@ -44,8 +44,12 @@ class MutationModel(ABC, Generic[GenoType]):
         self.rng = rng_state
 
     @abstractmethod
-    def mutate(self, seq: GenoType) -> GenoType:
-        """Mutate a sequence."""
+    def mutate(self, sequences: list[GenoType]) -> list[GenoType]:
+        """
+        Mutate a list of sequences.
+        :param sequences: list of sequences to mutate
+        :return: list of mutated sequences
+        """
         raise NotImplementedError
 
 class RandomSequenceMutator(MutationModel[BioSeqGenotype]):
@@ -56,13 +60,13 @@ class RandomSequenceMutator(MutationModel[BioSeqGenotype]):
         super().__init__(config)
         self.alphabet = config.alphabet
 
-    def mutate(self, seq: BioSeqGenotype) -> BioSeqGenotype:
+    def _mutate(self, seq: BioSeqGenotype) -> BioSeqGenotype:
         """
         Mutate a sequence by randomly changing one letter.
         :param seq: sequence to mutate
         """ 
         # TODO: the 50 steps limitation from the paper should be implemented here
-        i = self.rng.integers(len(seq))
+        i = self.rng.integers(len(seq.sequence))
         new_letter = self.rng.choice([a for a in self.alphabet if a != seq.sequence[i]])
         mutated_seq = seq.sequence.copy()
         mutated_seq[i] = new_letter
@@ -71,6 +75,13 @@ class RandomSequenceMutator(MutationModel[BioSeqGenotype]):
         elif isinstance(seq, DNAGenotype):
             mutated_gen = DNAGenotype(mutated_seq)
         return mutated_gen
+    
+    def mutate(self, sequences: list[BioSeqGenotype]) ->  list[BioSeqGenotype]:
+        """
+        Mutate a list of sequences.
+        :param sequences: list of sequences to mutate
+        """
+        return [self._mutate(seq) for seq in sequences]
     
 class HelixMRNASequenceMutator(MutationModel[RNAGenotype]):
     """
@@ -90,18 +101,20 @@ class HelixMRNASequenceMutator(MutationModel[RNAGenotype]):
         logger.info(torch.cuda.get_device_name())
         logger.info(torch.get_autocast_gpu_dtype())  # Should show bfloat16 or float16
     
-    #TODO: batching
+
     #TODO: use scores?
-    def mutate(self, seq: RNAGenotype) -> RNAGenotype:
-        mutation_position = self.rng.integers(len(seq.sequence) - self.config.mutation_length + 1) #TODO: save seq length (dont recalculate)
+    def mutate(self, sequences: list[RNAGenotype]) -> list[RNAGenotype]:
+        mutation_position = self.rng.integers(self.config.gen_max_len - self.config.mutation_length + 1)
+        str_sequences = [str(seq) for seq in sequences]
         mutated, scores = mutate_sequence(model=self.model,
                                         device=self.device,
                                         tokenizer=self.tokenizer,
                                         mutation_position=mutation_position,
-                                        original_seq=str(seq),
+                                        original_seq=str_sequences,
                                         mutation_length=self.config.mutation_length,
                                         softmax_temperature=self.config.temp,
                                         top_k=self.config.top_k,
                                         logits_threshold=self.config.logits_threshold,
                                         top_p=self.config.top_p)
-        return RNAGenotype(mutated)
+        
+        return [RNAGenotype(seq) for seq in mutated] 

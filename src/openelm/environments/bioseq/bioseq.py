@@ -271,8 +271,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         """
         Mutate a list of genomes by applying the mutation function to each genome.
         """     # TODO: the 50 steps limitation from the paper should be implemented here
-        # TODO: batching
-        return [self.mutation_model.mutate(genome) for genome in genomes]
+        return self.mutation_model.mutate(genomes)
 
     def fitness(self, x: BioSeqGenotype) -> float:
         """
