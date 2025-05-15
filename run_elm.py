@@ -31,17 +31,6 @@ logging.getLogger("helical").setLevel(logging.WARNING)
 )
 def main(config):
 
-    # Add commit hash to config
-    commit = os.getenv("COMMIT_HASH") 
-    if not commit:
-        try:
-            commit = subprocess.getoutput("git rev-parse --short HEAD")
-        except Exception:
-            commit = "unknown"
-
-    # Append commit to run_name
-    config.run_name = f"{config.run_name}_{commit}"
-
     # Set up wandb
     config_dict = OmegaConf.to_container(config, resolve=True)
     wandb_group = config.wandb_group
@@ -55,7 +44,8 @@ def main(config):
         name=run_name, 
         group=run_group, 
         config=config_dict,
-        mode=config.wandb_mode)  
+        mode=config.wandb_mode,
+        dir="/workdir/wandb",)  
     wandb.config.update(config_dict)
     wandb.config["gpu_name"] = torch.cuda.get_device_name(0)
 
