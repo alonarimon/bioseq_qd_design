@@ -46,6 +46,7 @@ class BioRandomModelConfig(ModelConfig):
     model_name: str = "bio_random"
     model_path: str = ""
     alphabet: list[int] = field(default_factory=lambda: [0, 1, 2, 3]) # [A, C, G, U]
+    mutation_length: int = 5
 
 @dataclass 
 class MutatorHelixConfig(ModelConfig):
@@ -54,10 +55,10 @@ class MutatorHelixConfig(ModelConfig):
     tokenizer_path: str = "" #TODO
     mutation_length: int = 5
     temp : float = 0.6
-    top_k: int = 3
+    top_k: int = 1
     logits_threshold: float = 0.8
     top_p: float = 0.0 # 0.0 = no top-p samplings
-    batch_size: int = 1 #TODO!
+    batch_size: int = 128 #TODO!
     gen_max_len: int = 50
 
 @dataclass
@@ -166,8 +167,8 @@ class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this wil
 defaults_elm = [
     {"qd": "cvtmapelites"},
     {"env": "qd_bio_rna"},
-    {"mutation_model": "mutator_helix_mrna"},
-    {"fitness_model": "fitness_bio_ensemble"},
+    {"mutation_model": "mutator_helix_mrna"}, # can be "bio_random" or "mutator_helix_mrna"
+    {"fitness_model": "fitness_helix_mrna"}, # can be "fitness_bio_ensemble" or "fitness_helix_mrna"
     "_self_",
 ]
 
@@ -238,6 +239,12 @@ class OneShotBioELMConfig(ELMConfig):
         initial_population_sample_seed=123,
         task='UTR-ResNet-v0-CUSTOM'
     ))
+    mutation_model: Any = field(default_factory=lambda: BioRandomModelConfig(
+        model_name="bio_random",
+        model_path="",  
+        alphabet=[0, 1, 2, 3], # [A, C, G, U]
+        mutation_length=1
+    ))
 
 
 @dataclass
@@ -285,6 +292,12 @@ class OneShotSimilarityBDELMConfig(ELMConfig):
         distance_normalization_constant=14.3378899,
         initial_population_sample_seed=123,
         task='UTR-ResNet-v0-CUSTOM'
+    ))
+    mutation_model: Any = field(default_factory=lambda: BioRandomModelConfig(
+        model_name="bio_random",
+        model_path="",  
+        alphabet=[0, 1, 2, 3], # [A, C, G, U]
+        mutation_length=1
     ))
 
 

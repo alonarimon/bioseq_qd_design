@@ -66,10 +66,11 @@ class RandomSequenceMutator(MutationModel[BioSeqGenotype]):
         :param seq: sequence to mutate
         """ 
         # TODO: the 50 steps limitation from the paper should be implemented here
-        i = self.rng.integers(len(seq.sequence))
-        new_letter = self.rng.choice([a for a in self.alphabet if a != seq.sequence[i]])
+        mutation_position = self.rng.integers(self.config.gen_max_len - self.config.mutation_length + 1)
         mutated_seq = seq.sequence.copy()
-        mutated_seq[i] = new_letter
+        for i in range(mutation_position, mutation_position + self.config.mutation_length):
+            new_letter = self.rng.choice([a for a in self.alphabet if a != seq.sequence[i]])
+            mutated_seq[i] = new_letter
         if isinstance(seq, RNAGenotype):
             mutated_gen = RNAGenotype(mutated_seq)
         elif isinstance(seq, DNAGenotype):
