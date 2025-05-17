@@ -133,6 +133,7 @@ dmypy.json
 .vscode
 checkpoints/
 logs/elm/
+logs/helix_mrna_fine_tune/debug/
 wandb/
 archive/
 data/

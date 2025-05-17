@@ -33,11 +33,9 @@ def main(config):
 
     # Set up wandb
     config_dict = OmegaConf.to_container(config, resolve=True)
-    wandb_group = config.wandb_group
-    run_name = config.run_name
-    if config.env.env_name == "qd_bio_rna":
-        run_group = f"{wandb_group}_{config.env.task}"
-        run_name = f"{run_name}_{config.env.bd_type}_{config.fitness_model.model_name}_{config.mutation_model.model_name}"
+
+    run_group = f"{config.wandb_group}_{config.env.task}"
+    run_name = f"BD_{config.env.bd_type}_FITNESS_{config.fitness_model.model_name}_MUTATOR_{config.mutation_model.model_name}"
     
     wandb.init(
         project="bioseq_qd_design", 

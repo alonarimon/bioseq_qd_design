@@ -250,73 +250,107 @@ if __name__ == '__main__':
     # load maps from pkl file
 
     bioseq_base_dir = Path(__file__).resolve().parents[5]
-    all_logs_dirs = [
-        # bioseq_base_dir / "logs" / "elm" / "25-04-30_15-18" / "step_19999",
-        # bioseq_base_dir / "logs" / "elm" / "25-04-23_18-53" / "step_19999",
-        # bioseq_base_dir / "logs" / "elm" / "25-04-21_15-44" / "step_4999",
-        # bioseq_base_dir / "logs" / "elm" / "25-04-16_15-09" / "step_19999",
-        # bioseq_base_dir / "logs" / "elm" / "25-04-16_10-50" / "step_19999",
-        # bioseq_base_dir / "logs" / "elm" / "25-04-15_19-05" / "step_99999",
-        bioseq_base_dir / "logs" / "elm" / "25-05-15_12-16" / "step_99999",
-    ]
-    for exp_logs_dir in all_logs_dirs:
-
-        config_file = os.path.join(exp_logs_dir.parent, ".hydra", "config.yaml")
+    #           '25-04-15_19-05', 
+    #         '25-04-16_10-50', 
+    #         '25-04-16_15-09', 
+    #         '25-04-21_15-44', 
+    #         '25-04-23_18-53', 
+    #           '25-05-12_18-09', 
+    #         '25-05-12_18-31', 
+    #          '25-05-13_14-42', 
+    #         '25-05-13_17-24', 
+    #         '25-05-13_18-04', 
+    #         '25-05-13_18-07', 
+    dirs = ['25-05-14_18-37', 
+            '25-05-14_20-47', 
+            '25-05-14_21-47', 
+            '25-05-15_10-55', 
+            '25-05-15_11-05', 
+            '25-05-15_12-16', 
+            '25-05-15_15-45']
+    for dir in dirs:
+        exp_logs_dir = os.path.join(bioseq_base_dir, "logs", "elm", dir)
+        config_file = os.path.join(exp_logs_dir, ".hydra", "config.yaml")
         config_hydra = OmegaConf.load(config_file)
         config_dict = OmegaConf.to_container(config_hydra, resolve=True)
         elm_original_config = cast_elm_config(config_dict)
 
+      
+        run_group = f"{elm_original_config.wandb_group}_{elm_original_config.env.task}"
+        run_name = f"{elm_original_config.run_name}_{elm_original_config.env.bd_type}_{elm_original_config.fitness_model.model_name}_{elm_original_config.mutation_model.model_name}"
         wandb.init(
             project="bioseq_qd_design",
-            group="normalised_post_evaluation",
-            name=f"{exp_logs_dir.parent.name}_{exp_logs_dir.name}",
+            group=run_group,
+            name=run_name,
             config=config_dict,
         )
         wandb.config.update(config_dict)
+        
         # log all the png files in the logs directory
-        for file in os.listdir(exp_logs_dir.parent):
+        for file in os.listdir(exp_logs_dir):
             if file.endswith(".png"):
-                file_path = os.path.join(exp_logs_dir.parent, file)
+                file_path = os.path.join(exp_logs_dir, file)
                 wandb.log({file: wandb.Image(file_path)})
+    
+        all_steps_dirs = [d for d in os.listdir(exp_logs_dir) if os.path.isdir(os.path.join(exp_logs_dir, d))and d.startswith("step_")]
+        all_steps_dirs.sort(key=lambda x: int(x.split("_")[1]))
+        print(f"Found {len(all_steps_dirs)} steps directories: {all_steps_dirs}")
+        
+        # load fitness_history pkl file
+        fitness_history_pkl_file = os.path.join(exp_logs_dir, all_steps_dirs[-1], "MAPElites_fitness_history.pkl")
+        fitness_history = pickle.load(open(fitness_history_pkl_file, "rb"))
+    
+        # log the fitness history
+        for i in range(len(fitness_history['max'])):
+            wandb.log({
+                "fitness max": fitness_history['max'][i],
+                "fitness mean": fitness_history['mean'][i],
+                "fitness min": fitness_history['min'][i],
+                "qd score": fitness_history['qd_score'][i],
+                "niches filled": fitness_history['niches_filled'][i],
+                "step": i
+            }, step=i)
 
-        maps_pkl_file = os.path.join(exp_logs_dir, "MAPElites_maps.pkl")
-        with open(maps_pkl_file, "rb") as f:
-            maps = pickle.load(f)
-        genomes = maps["genomes"]
-        non_zero_genoms = [g for g in genomes if g != 0]
-        print(f"Loaded {len(genomes)} genomes from the maps.")
-        print(f"Number of non-zero genomes: {len(non_zero_genoms)}")
-        # load oracle model
-        ORACLE_NAME = "original_v0_minmax_orig"
-        DATASET_PATH = bioseq_base_dir / "design-bench-detached" / "design_bench_data" / "utr"
-        oracle = load_oracle(DATASET_PATH, ORACLE_NAME)
-        model = oracle.params["model"]  # access the Keras model
-        # for i, layer in enumerate(model.layers):
-        #     output_shape = getattr(layer.output, 'shape', None)
-        #     print(f"Layer {i}: {layer.name}, output shape: {output_shape}")
-        embedding_model = tf.keras.Model(
-            inputs=model.input,
-            outputs=model.get_layer('reshape').output  # layer 21
-        )
-        offline_data_path = DATASET_PATH / "oracle_data" / ORACLE_NAME / "sampled_offline_relabeled_data" / "sampled_data_fraction_1_3_seed_42"
-        ref_list = loaf_ref_list(os.path.join(offline_data_path, "x.npy"), 16384, seed=42)
-        full_data_y_path = DATASET_PATH / "oracle_data" / ORACLE_NAME / "relabelled_y.npy"
-        full_data_y = np.load(full_data_y_path)
-        max_score = np.max(full_data_y)
-        min_score = np.min(full_data_y)
-        logger.info(f"offline data max score: {max_score}, min score: {min_score}")
-        ref_genotypes = [RNAGenotype(seq) for seq in ref_list]
-        save_dir = os.path.join(exp_logs_dir, "oracle_nonrmalised_post_evaluation")
 
-        downsampled_genoms = downsample_solutions(genomes=non_zero_genoms, k=128, save_dir=save_dir, original_config=elm_original_config)
-        logging.info(f"Evaluating {len(non_zero_genoms)} genomes and {len(downsampled_genoms)} down-sampled genomes against the oracle and reference set.")
+        for step_dir in all_steps_dirs:
+            step_dir_path = os.path.join(exp_logs_dir, step_dir)
+            maps_pkl_file = os.path.join(step_dir_path, "MAPElites_maps.pkl")
+            with open(maps_pkl_file, "rb") as f:
+                maps = pickle.load(f)
+            genomes = maps["genomes"]
+            non_zero_genoms = [g for g in genomes if g != 0]
+            print(f"Loaded {len(genomes)} genomes from the maps.")
+            print(f"Number of non-zero genomes: {len(non_zero_genoms)}")
+            # load oracle model
+            ORACLE_NAME = "original_v0_minmax_orig"
+            DATASET_PATH = bioseq_base_dir / "design-bench-detached" / "design_bench_data" / "utr"
+            oracle = load_oracle(DATASET_PATH, ORACLE_NAME)
+            model = oracle.params["model"]  # access the Keras model
+            
+            embedding_model = tf.keras.Model(
+                inputs=model.input,
+                outputs=model.get_layer('reshape').output  # layer 21
+            )
+            offline_data_path = DATASET_PATH / "oracle_data" / ORACLE_NAME / "sampled_offline_relabeled_data" / "sampled_data_fraction_1_3_seed_42"
+            ref_list = loaf_ref_list(os.path.join(offline_data_path, "x.npy"), 16384, seed=42)
+            full_data_y_path = DATASET_PATH / "oracle_data" / ORACLE_NAME / "relabelled_y.npy"
+            full_data_y = np.load(full_data_y_path)
+            max_score = np.max(full_data_y)
+            min_score = np.min(full_data_y)
+            logger.info(f"offline data max score: {max_score}, min score: {min_score}")
+            ref_genotypes = [RNAGenotype(seq) for seq in ref_list]
+            save_dir = os.path.join(step_dir_path, "oracle_nonrmalised_post_evaluation")
 
-        results = evaluate_solutions_set(oracle=oracle,
-                                solutions=non_zero_genoms,
-                                ref_solutions=ref_genotypes,
-                                downsampled_solutions=downsampled_genoms,
-                                min_score=min_score,
-                                max_score=max_score,
-                               k=128, plot=True, save_path=save_dir)
-        wandb.log(results)
+            downsampled_genoms = downsample_solutions(genomes=non_zero_genoms, k=128, save_dir=save_dir, original_config=elm_original_config)
+            logging.info(f"Evaluating {len(non_zero_genoms)} genomes and {len(downsampled_genoms)} down-sampled genomes against the oracle and reference set.")
+
+            results = evaluate_solutions_set(oracle=oracle,
+                                    solutions=non_zero_genoms,
+                                    ref_solutions=ref_genotypes,
+                                    downsampled_solutions=downsampled_genoms,
+                                    min_score=min_score,
+                                    max_score=max_score,
+                                k=128, plot=True, save_path=save_dir)
+            step = int(step_dir.split("_")[1])
+            wandb.log({"step": step, "results": results}, step=step)
         wandb.finish()

@@ -32,8 +32,7 @@ def run_elm():
             "qd.init_steps=1",
             "qd.total_steps=100",
             "output_dir=test_logs",
-            f"run_name=test_{name}",
-            f"wandb_group=test_suite",
+            f"wandb_group=test_suite_{name}",
             f"hydra.run.dir=logs/elm/test_{name}/{timestamp}",
         ]
 

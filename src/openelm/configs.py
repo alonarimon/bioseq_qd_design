@@ -190,7 +190,6 @@ class ELMConfig(BaseConfig):
     fitness_model: Any = MISSING
     qd: Any = MISSING
     env: Any = MISSING
-    run_name: str = datetime.now().strftime("%Y-%m-%d_%H-%M")
     wandb_group: str = "run_elm"
     wandb_mode: str = "online"
 
