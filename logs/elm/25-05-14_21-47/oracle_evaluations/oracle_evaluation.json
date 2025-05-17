@@ -1,0 +1,32 @@
+{
+    "all_solutions": {
+        "max_score": 0.8207651376724243,
+        "mean_score": 0.659850445194861,
+        "diversity_score_first_order": 30.20496066905822,
+        "novelty_score_first_order": 20.632623071271123,
+        "diversity_score_second_order": 22.26266477935774,
+        "novelty_score_second_order": 4.585598824393828,
+        "diversity_score_embed": 0.023654806070630054,
+        "novelty_score_embed": 0.004601626168976495
+    },
+    "top_k_solutions": {
+        "max_score": 0.8207651376724243,
+        "mean_score": 0.7308443007059395,
+        "diversity_score_first_order": 28.434916338582678,
+        "novelty_score_first_order": 21.328125,
+        "diversity_score_second_order": 12.688484251968504,
+        "novelty_score_second_order": 1.75,
+        "diversity_score_embed": 0.02801413324644312,
+        "novelty_score_embed": 0.007698817327056206
+    },
+    "downsampled_solutions": {
+        "max_score": 0.7644022703170776,
+        "mean_score": 0.660903557902202,
+        "diversity_score_first_order": 30.22502460629921,
+        "novelty_score_first_order": 20.6484375,
+        "diversity_score_second_order": 22.373646653543307,
+        "novelty_score_second_order": 4.4765625,
+        "diversity_score_embed": 0.022375106673210774,
+        "novelty_score_embed": 0.004380762189327591
+    }
+}

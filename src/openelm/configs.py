@@ -147,6 +147,8 @@ class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this wil
     offline_data_x_file: str = "x.npy"  # Name of the offline data X file
     offline_data_y_file: str = "y.npy"  # Name of the offline data Y file
     oracle_model_path: str = os.path.join("design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig")  # Path to the oracle model
+    oracle_max_score: float = 0.7381 # Max score of the oracle model over UTR dataset
+    oracle_min_score: float = 0.1885 # Min score of the oracle model over UTR dataset
     bd_type: str = "nucleotides_frequencies" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred). "similarity_based": The phenotype is a vector of the similarity of the sequence to the offline ref data.
     normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
     distance_normalization_constant: float = 14.3378899  # Constant for distance normalization (for the similarity-based BD). -1 means constant will be automatically calculated from the offline data.

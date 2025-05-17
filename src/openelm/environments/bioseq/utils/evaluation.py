@@ -3,6 +3,8 @@ import os
 import pickle
 from pathlib import Path
 import logging
+
+from omegaconf import OmegaConf
 import Levenshtein
 import numpy as np
 import yaml
@@ -13,7 +15,7 @@ import tensorflow as tf
 import RNA
 
 from openelm.environments.bioseq.genotypes import RNAGenotype
-from openelm.environments.bioseq.utils.debug_utils import loaf_ref_list, load_oracle, downsample_solutions
+from openelm.environments.bioseq.utils.debug_utils import cast_elm_config, loaf_ref_list, load_oracle, downsample_solutions
 from openelm.utils.plots import plot_distance_histograms, plot_distance_histograms_only_k
 
 logger = logging.getLogger(__name__)
@@ -40,6 +42,8 @@ def extract_oracle_embeddings(list_of_sequences, oracle, layer_name='reshape'):
 def evaluate_solutions_set(oracle, solutions: list[RNAGenotype],
                            ref_solutions: list[RNAGenotype],
                            downsampled_solutions: list[RNAGenotype],
+                           min_score: float,
+                           max_score: float,
                            k: int = 128,
                            plot: bool = False, save_path: str = None):
     """
@@ -59,6 +63,7 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype],
     sequences = [genotype.sequence for genotype in solutions]
     sequences_np = np.array(sequences)
     scores = oracle.predict(sequences_np).flatten()
+    scores = (scores - min_score) / (max_score - min_score) # normalize the scores
 
     results_all = calc_all_metrics(
         scores, solutions, ref_solutions, oracle
@@ -77,6 +82,7 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype],
 
     # Calculate metrics for the downsampled solutions if provided
     downsampled_scores = oracle.predict(np.array([genotype.sequence for genotype in downsampled_solutions])).flatten()
+    downsampled_scores = (downsampled_scores - min_score) / (max_score - min_score)  # normalize the scores
     results_downsampled = calc_all_metrics(
         downsampled_scores, downsampled_solutions, ref_solutions, oracle
     )
@@ -245,32 +251,35 @@ if __name__ == '__main__':
 
     bioseq_base_dir = Path(__file__).resolve().parents[5]
     all_logs_dirs = [
-        bioseq_base_dir / "logs" / "elm" / "25-04-30_15-18" / "step_19999",
-        bioseq_base_dir / "logs" / "elm" / "25-04-23_18-53" / "step_19999",
-        bioseq_base_dir / "logs" / "elm" / "25-04-21_15-44" / "step_4999",
-        bioseq_base_dir / "logs" / "elm" / "25-04-16_15-09" / "step_19999",
-        bioseq_base_dir / "logs" / "elm" / "25-04-16_10-50" / "step_19999",
-        bioseq_base_dir / "logs" / "elm" / "25-04-15_19-05" / "step_99999",
+        # bioseq_base_dir / "logs" / "elm" / "25-04-30_15-18" / "step_19999",
+        # bioseq_base_dir / "logs" / "elm" / "25-04-23_18-53" / "step_19999",
+        # bioseq_base_dir / "logs" / "elm" / "25-04-21_15-44" / "step_4999",
+        # bioseq_base_dir / "logs" / "elm" / "25-04-16_15-09" / "step_19999",
+        # bioseq_base_dir / "logs" / "elm" / "25-04-16_10-50" / "step_19999",
+        # bioseq_base_dir / "logs" / "elm" / "25-04-15_19-05" / "step_99999",
+        bioseq_base_dir / "logs" / "elm" / "25-05-15_12-16" / "step_99999",
     ]
     for exp_logs_dir in all_logs_dirs:
 
         config_file = os.path.join(exp_logs_dir.parent, ".hydra", "config.yaml")
-        with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
+        config_hydra = OmegaConf.load(config_file)
+        config_dict = OmegaConf.to_container(config_hydra, resolve=True)
+        elm_original_config = cast_elm_config(config_dict)
+
         wandb.init(
             project="bioseq_qd_design",
-            group="evaluation_of_old_runs_elm",
+            group="normalised_post_evaluation",
             name=f"{exp_logs_dir.parent.name}_{exp_logs_dir.name}",
-            config=config,
+            config=config_dict,
         )
-        wandb.config.update(config)
+        wandb.config.update(config_dict)
         # log all the png files in the logs directory
         for file in os.listdir(exp_logs_dir.parent):
             if file.endswith(".png"):
                 file_path = os.path.join(exp_logs_dir.parent, file)
                 wandb.log({file: wandb.Image(file_path)})
 
-        maps_pkl_file = os.path.join(exp_logs_dir, "maps.pkl")
+        maps_pkl_file = os.path.join(exp_logs_dir, "MAPElites_maps.pkl")
         with open(maps_pkl_file, "rb") as f:
             maps = pickle.load(f)
         genomes = maps["genomes"]
@@ -289,17 +298,25 @@ if __name__ == '__main__':
             inputs=model.input,
             outputs=model.get_layer('reshape').output  # layer 21
         )
-        offline_data_path_x = bioseq_base_dir / "design-bench-detached" / "design_bench_data" / "utr" / "oracle_data" / "original_v0_minmax_orig" / "sampled_offline_relabeled_data" / "sampled_data_fraction_1_3_seed_42"
-        ref_list = loaf_ref_list(os.path.join(offline_data_path_x, "x.npy"), 16384, seed=42)
+        offline_data_path = DATASET_PATH / "oracle_data" / ORACLE_NAME / "sampled_offline_relabeled_data" / "sampled_data_fraction_1_3_seed_42"
+        ref_list = loaf_ref_list(os.path.join(offline_data_path, "x.npy"), 16384, seed=42)
+        full_data_y_path = DATASET_PATH / "oracle_data" / ORACLE_NAME / "relabelled_y.npy"
+        full_data_y = np.load(full_data_y_path)
+        max_score = np.max(full_data_y)
+        min_score = np.min(full_data_y)
+        logger.info(f"offline data max score: {max_score}, min score: {min_score}")
         ref_genotypes = [RNAGenotype(seq) for seq in ref_list]
-        save_dir = os.path.join(exp_logs_dir, "oracle_evaluation")
-        downsampled_genoms = downsample_solutions(genomes=non_zero_genoms, k=128, save_dir=save_dir)
+        save_dir = os.path.join(exp_logs_dir, "oracle_nonrmalised_post_evaluation")
+
+        downsampled_genoms = downsample_solutions(genomes=non_zero_genoms, k=128, save_dir=save_dir, original_config=elm_original_config)
         logging.info(f"Evaluating {len(non_zero_genoms)} genomes and {len(downsampled_genoms)} down-sampled genomes against the oracle and reference set.")
 
         results = evaluate_solutions_set(oracle=oracle,
-                               solutions=non_zero_genoms,
-                               ref_solutions=ref_genotypes,
-                               downsampled_solutions=downsampled_genoms,
+                                solutions=non_zero_genoms,
+                                ref_solutions=ref_genotypes,
+                                downsampled_solutions=downsampled_genoms,
+                                min_score=min_score,
+                                max_score=max_score,
                                k=128, plot=True, save_path=save_dir)
         wandb.log(results)
         wandb.finish()

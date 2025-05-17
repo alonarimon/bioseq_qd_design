@@ -313,14 +313,31 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         :param save_dir: directory to save the evaluation results and plots
         :return: max, diversity, mean, and novelty scores for all solutions, and for the top k solutions.
         """
-        results = evaluate_solutions_set(
+        results_normalized = evaluate_solutions_set(
             solutions=genotypes,
             downsampled_solutions=downsampled_genotypes,
             ref_solutions=self.reference_set,
             oracle=self.oracle,
+            max_score=self.config.oracle_max_score,
+            min_score=self.config.oracle_min_score,
             k=k,
             plot=(save_dir is not None),
-            save_path=save_dir,
+            save_path=os.path.join(save_dir, "normalized") if save_dir is not None else None,
         )
+        results_unnormalized = evaluate_solutions_set(
+            solutions=genotypes,
+            downsampled_solutions=downsampled_genotypes,
+            ref_solutions=self.reference_set,
+            oracle=self.oracle,
+            max_score=1.0,
+            min_score=0.0,
+            k=k,
+            plot=(save_dir is not None),
+            save_path=os.path.join(save_dir, "unnormalized") if save_dir is not None else None,
+        )
+        results = {
+            "normalized": results_normalized,
+            "unnormalized": results_unnormalized
+        }
         return results
 

@@ -1,0 +1,6 @@
+- env.size_of_refs_collection=10
+- qd.init_steps=1
+- qd.total_steps=100
+- output_dir=test_logs
+- run_name=test_oneshot_bio_bd
+- wandb_group=test_suite

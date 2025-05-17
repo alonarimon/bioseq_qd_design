@@ -14,26 +14,27 @@ def run_elm():
     if not os.path.exists(run_elm_path):
         raise FileNotFoundError(f"run_elm.py not found at {run_elm_path}")
 
-    configs_to_run = ["oneshot_bio_elmconfig", "oneshot_similarity_bd_elmconfig"]
+    configs_to_run = {"oneshot_bio_bd": "oneshot_bio_elmconfig",
+                      "oneshot_similarity_bd": "oneshot_similarity_bd_elmconfig"}
     run_dirs = {}
 
-    for config_name in configs_to_run:
+    for name, conf_name in configs_to_run.items():
         timestamp = datetime.now().strftime("%y-%m-%d_%H-%M")
         output_dir = os.path.join(
-            project_root, "logs", "elm", f"test_{config_name}", timestamp
+            project_root, "logs", "elm", f"test_{name}", timestamp
         )
         command = [
             sys.executable, run_elm_path,
-            "--config-name", config_name,
+            "--config-name", conf_name,
 
             # overrides
             "env.size_of_refs_collection=10",
             "qd.init_steps=1",
             "qd.total_steps=100",
             "output_dir=test_logs",
-            f"run_name=test_{config_name}",
+            f"run_name=test_{name}",
             f"wandb_group=test_suite",
-            f"hydra.run.dir=logs/elm/test_{config_name}/{timestamp}",
+            f"hydra.run.dir=logs/elm/test_{name}/{timestamp}",
         ]
 
         result = subprocess.run(command,
@@ -41,11 +42,13 @@ def run_elm():
                                 capture_output=True, text=True)
 
         if result.returncode != 0:
-            print(f"❌ Test for {config_name} failed")
+            print(f"❌ Test for {name} failed")
             print(result.stderr)
+        else:
+            print(f"finished running {name} with output dir: {output_dir}")
 
         # Save directory path for later comparison
-        run_dirs[config_name] = os.path.join(output_dir, "oracle_evaluations", "oracle_evaluation.json")
+        run_dirs[name] = os.path.join(output_dir, "oracle_evaluations")
 
     return run_dirs
 
@@ -87,7 +90,6 @@ def compare_results(new_results, reference_results, tolerance=0.0000001):
     return True
 
 
-
 def test_oneshot():
 
     # Run the ELM configurations
@@ -95,22 +97,24 @@ def test_oneshot():
 
     # Set fixed reference file paths (adjust if needed)
     reference_paths = {
-        "oneshot_bio_elmconfig": os.path.join(project_root, "logs", "elm", f"test_oneshot_bio_elmconfig", '25-05-06_17-27', "oracle_evaluations", "oracle_evaluation.json"),
-        "oneshot_similarity_bd_elmconfig": os.path.join(project_root, "logs", "elm", f"test_oneshot_similarity_bd_elmconfig", '25-05-06_17-29', "oracle_evaluations", "oracle_evaluation.json"),
+        "oneshot_bio_bd": os.path.join(project_root, "logs", "elm", f"test_oneshot_bio_bd", '25-05-17_14-19', "oracle_evaluations"),
+        "oneshot_similarity_bd": os.path.join(project_root, "logs", "elm", f"test_oneshot_similarity_bd", '25-05-17_14-20', "oracle_evaluations"),
     }
 
-    for config_name in ["oneshot_bio_elmconfig", "oneshot_similarity_bd_elmconfig"]:
-        new_results = load_json(run_dirs[config_name])
-        reference_results = load_json(reference_paths[config_name])
+    for config_name in ["oneshot_bio_bd", "oneshot_similarity_bd"]:
+        for version in ["unnormalized", "normalized"]:
+            new_results = load_json(os.path.join(run_dirs[config_name], version, "oracle_evaluation.json"))
+            reference_results = load_json(os.path.join(reference_paths[config_name], version, "oracle_evaluation.json"))
 
-        print(f"Comparing results for {config_name}...")
-        match = compare_results(new_results, reference_results)
-        if match:
-            print(f"✅ Test for {config_name} passed.")
-        else:
-            print(f"❌ Test for {config_name} failed.")
-            print("See differences above.")
-            raise AssertionError(f"Test for {config_name} failed. Results do not match.")
+            print(f"Comparing results for {config_name}, {version}...")
+            match = compare_results(new_results, reference_results)
+            if match:
+                print(f"✅ Test for {config_name}, {version} passed.")
+            else:
+                print(f"❌ Test for {config_name}, {version} failed.")
+                print("See differences above.")
+                raise AssertionError(f"Test for {config_name} failed. Results do not match.")
+
 
 if __name__ == "__main__":
     test_oneshot()

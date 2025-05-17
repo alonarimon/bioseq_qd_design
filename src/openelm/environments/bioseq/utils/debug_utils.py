@@ -1,4 +1,6 @@
+import copy
 import os
+from typing import Any
 import numpy as np
 import logging
 
@@ -8,13 +10,65 @@ from design_bench.oracles.tensorflow import ResNetOracle
 from scipy.spatial.distance import squareform
 
 from openelm.algorithms.map_elites import CVTMAPElites
-from openelm.configs import QDBioRNAEnvConfig, CVTMAPElitesConfig, BioRandomModelConfig
+from openelm.configs import ELMConfig, FitnessBioEnsembleConfig, FitnessHelixMRNAConfig, MAPElitesConfig, MutatorHelixConfig, QDBioRNAEnvConfig, CVTMAPElitesConfig, BioRandomModelConfig, QDConfig
 from openelm.mutation_model import RandomSequenceMutator
 
 ORACLE_NAME = "original_v0_minmax_orig"
 DATASET_PATH = r"/design-bench-detached/design_bench_data/utr"
 
 logger = logging.getLogger(__name__)
+
+
+def cast_fitness_model(cfg: Any):
+    if isinstance(cfg, FitnessBioEnsembleConfig) or isinstance(cfg, FitnessHelixMRNAConfig):
+        return cfg
+    if isinstance(cfg, dict):
+        if cfg.get("model_type") == "bio_ensemble":
+            return FitnessBioEnsembleConfig(**cfg)
+        elif cfg.get("model_type") == "helix_mrna":
+            return FitnessHelixMRNAConfig(**cfg)
+    raise ValueError("Unknown fitness_model config")
+
+def cast_mutation_model(cfg: Any):
+    if isinstance(cfg, BioRandomModelConfig) or isinstance(cfg, MutatorHelixConfig):
+        return cfg
+    if isinstance(cfg, dict):
+        if cfg.get("model_name") == "bio_random":
+            return BioRandomModelConfig(**cfg)
+        elif cfg.get("model_name") == "mutator_helix_mrna":
+            return MutatorHelixConfig(**cfg)
+    raise ValueError("Unknown mutation_model config")
+
+def cast_qd_config(cfg: Any):
+    if isinstance(cfg, QDConfig):
+        return cfg
+    if isinstance(cfg, dict):
+        if cfg.get("qd_name") == "cvtmapelites":
+            return CVTMAPElitesConfig(**cfg)
+        elif cfg.get("qd_name") == "mapelites":
+            return MAPElitesConfig(**cfg)
+    raise ValueError("Unknown QD config")
+
+def cast_env_config(cfg: Any):
+    if isinstance(cfg, QDBioRNAEnvConfig):
+        return cfg
+    if isinstance(cfg, dict):
+        if cfg.get("env_name") == "qd_bio_rna":
+            return QDBioRNAEnvConfig(**cfg)
+    raise ValueError("Unknown env config")
+
+def cast_elm_config(cfg: Any):
+    if isinstance(cfg, ELMConfig):
+        return cfg
+    if isinstance(cfg, dict):
+        return ELMConfig(
+            env=cast_env_config(cfg.get("env")),
+            qd=cast_qd_config(cfg.get("qd")),
+            fitness_model=cast_fitness_model(cfg.get("fitness_model")),
+            mutation_model=cast_mutation_model(cfg.get("mutation_model")),
+            run_name=cfg.get("run_name"),
+            wandb_group=cfg.get("wandb_group"),
+            wandb_mode=cfg.get("wandb_mode"),)
 
 def load_oracle(dataset_path, oracle_name):
     oracle_data_path = os.path.join(dataset_path, "oracle_data")
@@ -72,15 +126,20 @@ def get_conflicted_pairs(list_of_solutions, scondary_structures, distances, dist
             f.write(f"score1: {scores[pair[0]]}, score2: {scores[pair[1]]}\n")
             f.write("=" * 50 + "\n")
 
-def downsample_solutions(genomes, k, save_dir):
-    # downsample
-    downsampled_config = CVTMAPElitesConfig()
+def downsample_solutions(genomes, k, save_dir, original_config: ELMConfig):
+    logger.info(f"Downsampling {len(genomes)} solutions to {k} solutions")
+    logger.info(f"Fitness model type: {type(original_config.fitness_model)}")  # Should be FitnessBioEnsembleConfig or FitnessHelixMRNAConfig
+    logger.info(f"Mutation model type: {type(original_config.mutation_model)}")  # Should be RandomSequenceMutator or MutatorHelix
+
+    downsampled_config = copy.deepcopy(original_config.qd)
     downsampled_config.cvt_samples = len(genomes)
     downsampled_config.n_niches = k
     downsampled_config.output_dir = os.path.join(save_dir, "downsampled_map")
-    bioseq_env_config = QDBioRNAEnvConfig()
     from openelm.environments.bioseq.bioseq import BioSeqEvolution
-    bioseq_env = BioSeqEvolution(config=bioseq_env_config, mutation_model=RandomSequenceMutator(BioRandomModelConfig()))
+    logger.info(f"Downsampled QD config: {downsampled_config}")
+    bioseq_env = BioSeqEvolution(config=original_config.env, 
+                                 mutation_model_config=original_config.mutation_model,
+                                 fitness_model_config=original_config.fitness_model,)
     downsampled_map = CVTMAPElites(
         env=bioseq_env,
         config=downsampled_config,

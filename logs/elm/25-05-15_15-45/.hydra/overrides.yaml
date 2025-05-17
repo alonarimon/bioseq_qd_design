@@ -1,0 +1,3 @@
+- qd.total_steps=100000
+- mutation_model=bio_random
+- fitness_model=fitness_bio_ensemble

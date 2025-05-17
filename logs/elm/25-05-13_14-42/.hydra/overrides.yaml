@@ -1,0 +1,4 @@
+- qd.total_steps=100000
+- env.task=UTR-ResNet-v0-CUSTOM
+- env.bd_type=nucleotides_frequencies
+- env.behavior_space=[[0.0,1.0],[0.0,1.0],[0.0,1.0]]
