@@ -3,7 +3,7 @@ import os
 import torch
 from torch.utils.data import Dataset
 
-from preprocess import sequence_nuc_to_one_hot, log_interpolated_one_hot
+from openelm.environments.bioseq.scoring_ensemble.preprocess import sequence_nuc_to_one_hot, log_interpolated_one_hot
 
 
 class UTRLogDataset(Dataset):

@@ -65,12 +65,15 @@ class MutatorHelixConfig(ModelConfig):
 class FitnessBioEnsembleConfig(ModelConfig):
     model_type: str = "bio_ensemble"  # Can be "hf", "openai", etc
     model_name: str = "fitness_bio_ensemble"
-    model_path: str = os.path.join("src", "openelm", "environments", "bioseq", "utr_fitness_function", "one_shot_scoring_ensemble", "scoring_models")
+    model_path: str = os.path.join("src", "openelm", "environments", "bioseq", "utr_fitness_function", "utr_scoring_ensemble", "scoring_models")
     ensemble_size: int = 4 # Number of scoring models to use for fitness evaluation #todo: 18
     beta: float = 2.0  # Penalty term factor
     alphabet_size: int = 4 # Size of the alphabet (e.g., 4 for nucleotides ACGU)
     sequence_length: int = 50 # Length of the sequence to be evaluated
     batch_size: int = 128
+
+    # retraining parameters
+    retrain: bool = False # Whether to retrain the model or load existing weights
 
 @dataclass
 class FitnessHelixMRNAConfig(ModelConfig):

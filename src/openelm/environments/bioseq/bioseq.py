@@ -22,7 +22,7 @@ from openelm.mutation_model import get_mutation_model
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import get_fitness_model
 from openelm.environments.bioseq.utils.evaluation import evaluate_solutions_set
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
@@ -43,7 +43,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         
         
         # models
-        self.mutation_model = get_mutation_model(mutation_model_config) #todo: not in use
+        self.mutation_model = get_mutation_model(mutation_model_config) 
         self.fitness_function = get_fitness_model(fitness_model_config)
 
         self.batch_size = config.batch_size
@@ -62,19 +62,39 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(config.seed)
 
-        if self.config.task == 'TFBind10-Exact-v0':
+        # initialise task specific variables
+        if self.config.task == 'TFBind10-Exact-v1': #TODO: also the utr resnet from the task framework
             self.task = design_bench.make(self.config.task, relabel=False)
-            self.offline_data_x = self.task.x
-            self.offline_data_y = self.task.y
-            self.offline_data_x_gen = [DNAGenotype(seq) for seq in self.offline_data_x]
-
+            self.oracle = self.task.oracle
+ 
+            offline_dataset = self.task.dataset
+            self.offline_data_x = offline_dataset.x
+            self.offline_data_y = offline_dataset.y
+            self.min_output = self.task.dataset_min_output
+            self.max_output = self.task.dataset_max_output
+            if self.min_output == -np.inf:
+                logger.warning("min_output is -inf, setting it according to the offline data")
+                self.min_output = np.min(self.offline_data_y)
+            if self.max_output == np.inf:
+                logger.warning("max_output is +inf, setting it according to the offline data")
+                self.max_output = np.max(self.offline_data_y)
+            
+            logger.info(f"offline dataset size: {self.task.dataset_size}")
+            self.offline_data_x_gen = np.array([DNAGenotype(seq) for seq in self.offline_data_x])
 
         elif self.config.task == 'UTR-ResNet-v0-CUSTOM':
             self.task = None
             # Load the reference set from the offline data directory
             self.offline_data_x = np.load(os.path.join(config.offline_data_dir, self.config.offline_data_x_file))
             self.offline_data_x_gen = np.array([RNAGenotype(seq) for seq in self.offline_data_x])
+            #TODO - GENERALISE _load_oracle() function 
+            self.oracle = self._load_oracle()  # Load the oracle model from disk, for final evaluation on the solutions (not used in the optimization process)
+            self.min_output = config.oracle_min_score
+            self.max_output = config.oracle_max_score
 
+        else:
+            raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v1, UTR-ResNet-v0-CUSTOM")
+        
         self.reference_set = self._load_ref_set()
         
         if self.config.bd_type == "similarity_based":
@@ -94,7 +114,6 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
 
         logger.info(f"Behavioral descriptor min: {self.bd_min}, max: {self.bd_max}")
 
-        self.oracle = self._load_oracle()  # Load the oracle model from disk, for final evaluation on the solutions (not used in the optimization process)
 
         if self.batch_size > self.fitness_function.config.batch_size:
             logger.warning(f"Environment batch size {self.batch_size} exceeds the fitness model batch size {self.fitness_function.config.batch_size}.")
@@ -253,7 +272,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         return reference_set.tolist() #todo: work with np arrays instead of lists
 
     def _random_seq(self) -> list[int]:
-        seq = [self.rng.choice(self.config.alphabet) for _ in range(self.sequence_length)]
+        seq = [self.rng.choice(self.config.alphabet) for _ in range(self.config.sequence_length)]
         return seq
 
     def random(self) -> list[BioSeqGenotype]:
@@ -276,7 +295,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
     def fitness(self, x: BioSeqGenotype) -> float:
         """
         Evaluate the fitness of the sequence using a list of scoring functions. (scoring ensemble)
-        :param x: RNAGenotype
+        :param x: BioSeqGenotype
         :return: fitness score (float)
         """ # todo: make the fitness function work in batch mode
         fitness = self.fitness_function([x])
@@ -286,7 +305,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
     def fitness_batch(self, genotypes: list[BioSeqGenotype]) -> list[float]:
         """
         Evaluate the fitness of a batch of sequences using a list of scoring functions. (scoring ensemble)
-        :param genotypes: list of RNAGenotype
+        :param genotypes: list of BioSeqGenotype
         :return: list of fitness scores (float)
         """
         number_of_internal_batches = len(genotypes) / self.fitness_function.config.batch_size
@@ -318,8 +337,8 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
             downsampled_solutions=downsampled_genotypes,
             ref_solutions=self.reference_set,
             oracle=self.oracle,
-            max_score=self.config.oracle_max_score,
-            min_score=self.config.oracle_min_score,
+            max_score=self.max_output,
+            min_score=self.min_output,
             k=k,
             plot=(save_dir is not None),
             save_path=os.path.join(save_dir, "normalized") if save_dir is not None else None,

@@ -4,7 +4,6 @@ import torch
 import numpy as np
 import os
 
-UTR_DATA_DIR = r"C:\Users\Alona\Desktop\Imperial_college_london\MSc_project_code\OpenELM_GenomicQD\design-bench_forked\design_bench_data\utr"  # todo: not absolute path
 # Dictionary returning one-hot encoding of nucleotides.
 NUC_D = {0: [1, 0, 0, 0], 1: [0, 1, 0, 0],
          2: [0, 0, 1, 0], 3: [0, 0, 0, 1]}

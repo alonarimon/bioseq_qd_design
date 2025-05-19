@@ -6,8 +6,8 @@ from scipy.stats import spearmanr
 from torch import nn, optim
 from torch.utils.data import TensorDataset, DataLoader
 
-from scoring_model import ScoringNetwork
-from preprocess import log_interpolated_one_hot, sequence_nuc_to_one_hot
+from openelm.environments.bioseq.scoring_ensemble.scoring_model import ScoringNetwork
+from openelm.environments.bioseq.scoring_ensemble.preprocess import log_interpolated_one_hot, sequence_nuc_to_one_hot
 
 def optimize_conservatism(x_input: torch.Tensor,
                           model: nn.Module,

@@ -44,7 +44,7 @@ def get_fitness_model(config: ModelConfig):
             raise ValueError("Expected FitnessHelixMRNAConfig for helix_mrna model type.")
         return HelixMRNAFitnessFunction(config)
     elif config.model_type == "bio_ensemble":
-        from openelm.environments.bioseq.utr_fitness_function.one_shot_scoring_ensemble.fitness_scoring_ensemble import FitnessScoringEnsemble
+        from openelm.environments.bioseq.scoring_ensemble.fitness_scoring_ensemble import FitnessScoringEnsemble
         if not isinstance(config, FitnessBioEnsembleConfig):
             raise ValueError("Expected FitnessBioEnsembleConfig for bio_ensemble model type.")
         return FitnessScoringEnsemble(config)

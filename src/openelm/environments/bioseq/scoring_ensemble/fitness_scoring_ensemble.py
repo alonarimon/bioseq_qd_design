@@ -6,8 +6,8 @@ import torch
 from openelm.configs import FitnessBioEnsembleConfig
 from openelm.environments.bioseq.bioseq import RNAGenotype
 from openelm.environments.bioseq.utr_fitness_function.fitness_model import FitnessModel
-from openelm.environments.bioseq.utr_fitness_function.one_shot_scoring_ensemble.scoring_model import ScoringNetwork
-from openelm.environments.bioseq.utr_fitness_function.one_shot_scoring_ensemble.preprocess import sequence_nuc_to_one_hot, log_interpolated_one_hot
+from openelm.environments.bioseq.scoring_ensemble.scoring_model import ScoringNetwork
+from openelm.environments.bioseq.scoring_ensemble.preprocess import sequence_nuc_to_one_hot, log_interpolated_one_hot
 
 
 def load_scoring_ensemble(seq_len, K, model_dir, device="cuda", ensemble_size=1):

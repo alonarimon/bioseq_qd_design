@@ -5,8 +5,8 @@ import torch
 
 from torch.utils.data import DataLoader
 
-from openelm.environments.bioseq.utr_fitness_function.one_shot_scoring_ensemble.utr_log_dataset import UTRLogDataset
-from scoring_model import ScoringNetwork
+from openelm.environments.bioseq.utr_fitness_function.utr_scoring_ensemble.utr_log_dataset import UTRLogDataset
+from openelm.environments.bioseq.scoring_ensemble.scoring_model import ScoringNetwork
 from trainer import COMTrainer
 from openelm.utils.plots import plot_learning_curves
 
