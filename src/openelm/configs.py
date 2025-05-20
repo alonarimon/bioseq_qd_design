@@ -194,6 +194,7 @@ class ELMConfig(BaseConfig):
     qd: Any = MISSING
     env: Any = MISSING
     wandb_group: str = "run_elm"
+    run_name: str = ""
     wandb_mode: str = "online"
 
 @dataclass

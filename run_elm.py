@@ -62,7 +62,10 @@ def main(config):
     config_dict = OmegaConf.to_container(config, resolve=True)
 
     run_group = f"{config.wandb_group}_{config.env.task}"
-    run_name = f"BD_{config.env.bd_type}_FITNESS_{config.fitness_model.model_name}_MUTATOR_{config.mutation_model.model_name}"
+    if config.run_name != "":
+        run_name = f"{config.run_name}_BD_{config.env.bd_type}_FITNESS_{config.fitness_model.model_name}_MUTATOR_{config.mutation_model.model_name}"
+    else:
+        run_name = f"BD_{config.env.bd_type}_FITNESS_{config.fitness_model.model_name}_MUTATOR_{config.mutation_model.model_name}"    
     
     wandb.init(
         project="bioseq_qd_design", 
