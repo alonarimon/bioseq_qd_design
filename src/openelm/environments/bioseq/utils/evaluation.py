@@ -45,7 +45,8 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype],
                            min_score: float,
                            max_score: float,
                            k: int = 128,
-                           plot: bool = False, save_path: str = None):
+                           plot: bool = False, save_path: str = None,
+                           use_oracle_embeddings: bool = True):
     """
     Evaluate the solutions using the oracle scores.
     :param oracle: The oracle to use for evaluation.
@@ -66,7 +67,7 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype],
     scores = (scores - min_score) / (max_score - min_score) # normalize the scores
 
     results_all = calc_all_metrics(
-        scores, solutions, ref_solutions, oracle
+        scores, solutions, ref_solutions, oracle,  use_oracle_embeddings=use_oracle_embeddings
     )
 
     # Sort the scores and get the top k solutions
@@ -77,48 +78,49 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype],
 
     # Calculate metrics for the top k solutions
     results_top_k = calc_all_metrics(
-        top_k_scores, top_k_solutions, ref_solutions, oracle
+        top_k_scores, top_k_solutions, ref_solutions, oracle, use_oracle_embeddings=use_oracle_embeddings
     )
 
     # Calculate metrics for the downsampled solutions if provided
     downsampled_scores = oracle.predict(np.array([genotype.sequence for genotype in downsampled_solutions])).flatten()
     downsampled_scores = (downsampled_scores - min_score) / (max_score - min_score)  # normalize the scores
     results_downsampled = calc_all_metrics(
-        downsampled_scores, downsampled_solutions, ref_solutions, oracle
+        downsampled_scores, downsampled_solutions, ref_solutions, oracle, use_oracle_embeddings=use_oracle_embeddings
     )
 
     results = {
-        "all_solutions": {
+        "all_solutions/": {
             "max_score": results_all["max_score"],
             "mean_score": results_all["mean_score"],
             "diversity_score_first_order": results_all["diversity_score_first_order"],
             "novelty_score_first_order": results_all["novelty_score_first_order"],
             "diversity_score_second_order": results_all["diversity_score_second_order"],
             "novelty_score_second_order": results_all["novelty_score_second_order"],
-            "diversity_score_embed": results_all["diversity_score_embed"],
-            "novelty_score_embed": results_all["novelty_score_embed"],
         },
-        "top_k_solutions": {
+        "top_k_solutions/": {
             "max_score": results_top_k["max_score"],
             "mean_score": results_top_k["mean_score"],
             "diversity_score_first_order": results_top_k["diversity_score_first_order"],
             "novelty_score_first_order": results_top_k["novelty_score_first_order"],
             "diversity_score_second_order": results_top_k["diversity_score_second_order"],
             "novelty_score_second_order": results_top_k["novelty_score_second_order"],
-            "diversity_score_embed": results_top_k["diversity_score_embed"],
-            "novelty_score_embed": results_top_k["novelty_score_embed"],
         },
-        "downsampled_solutions": {
+        "downsampled_solutions/": {
             "max_score": results_downsampled["max_score"],
             "mean_score": results_downsampled["mean_score"],
             "diversity_score_first_order": results_downsampled["diversity_score_first_order"],
             "novelty_score_first_order": results_downsampled["novelty_score_first_order"],
             "diversity_score_second_order": results_downsampled["diversity_score_second_order"],
             "novelty_score_second_order": results_downsampled["novelty_score_second_order"],
-            "diversity_score_embed": results_downsampled["diversity_score_embed"],
-            "novelty_score_embed": results_downsampled["novelty_score_embed"],
         }
     }
+    if use_oracle_embeddings:
+        results["all_solutions/"]["diversity_score_embed"] = results_all["diversity_score_embed"]
+        results["all_solutions/"]["novelty_score_embed"] = results_all["novelty_score_embed"]
+        results["top_k_solutions/"]["diversity_score_embed"] = results_top_k["diversity_score_embed"]
+        results["top_k_solutions/"]["novelty_score_embed"] = results_top_k["novelty_score_embed"]
+        results["downsampled_solutions/"]["diversity_score_embed"] = results_downsampled["diversity_score_embed"]
+        results["downsampled_solutions/"]["novelty_score_embed"] = results_downsampled["novelty_score_embed"]
 
     if save_path is not None:
         os.makedirs(save_path, exist_ok=True)
@@ -137,15 +139,16 @@ def evaluate_solutions_set(oracle, solutions: list[RNAGenotype],
         for key in ["internal_distances_first_order", "ref_distances_first_order",
                      "internal_distances_second_order", "ref_distances_second_order",
                      "internal_distances_embed", "novelty_distances_embed"]:
-            plot_distance_histograms(all_distances=results_all[key],
-                                     topk_distances=results_top_k[key],
-                                     downsampled_distances=results_downsampled[key],
-                                     title=key.replace("_", " ").title(),
-                                     save_path=os.path.join(save_path, f"{key}.png"))
-            plot_distance_histograms_only_k(topk_distances=results_top_k[key],
-                                            downsampled_distances=results_downsampled[key],
-                                            title=key.replace("_", " ").title(),
-                                            save_path=os.path.join(save_path, f"{key}_only_k.png"))
+            if key in results_all:
+                plot_distance_histograms(all_distances=results_all[key],
+                                        topk_distances=results_top_k[key],
+                                        downsampled_distances=results_downsampled[key],
+                                        title=key.replace("_", " ").title(),
+                                        save_path=os.path.join(save_path, f"{key}.png"))
+                plot_distance_histograms_only_k(topk_distances=results_top_k[key],
+                                                downsampled_distances=results_downsampled[key],
+                                                title=key.replace("_", " ").title(),
+                                                save_path=os.path.join(save_path, f"{key}_only_k.png"))
 
     return results
 
@@ -194,6 +197,7 @@ def calc_all_metrics(
         solutions: list[RNAGenotype],
         ref_solutions: list[RNAGenotype],
         oracle,
+        use_oracle_embeddings: bool = True,
 ):
     """
     Calculate all metrics for the given solutions and reference solutions.
@@ -218,13 +222,6 @@ def calc_all_metrics(
     diversity_score_second_order, novelty_score_second_order, internal_distances_second_order, \
         ref_distances_second_order = calc_novelty_diversity_levenstein(secondary_structure_solutions,
                                                                        secondary_structure_ref_solutions)
-
-    # oracle embedding diversity and novelty
-    oracle_embeddings = extract_oracle_embeddings(sequences, oracle)
-    oracle_embeddings_ref = extract_oracle_embeddings(refs_seq, oracle)
-    diversity_score_embed, novelty_score_embed, internal_distances_embed, novelty_distances_embed = \
-        calc_novelty_diversity_embeddings(oracle_embeddings, oracle_embeddings_ref)
-
     results = {
         "max_score": max_score,
         "mean_score": mean_score,
@@ -236,11 +233,19 @@ def calc_all_metrics(
         "novelty_score_second_order": novelty_score_second_order,
         "internal_distances_second_order": internal_distances_second_order,
         "ref_distances_second_order": ref_distances_second_order,
-        "diversity_score_embed": diversity_score_embed,
-        "novelty_score_embed": novelty_score_embed,
-        "internal_distances_embed": internal_distances_embed,
-        "novelty_distances_embed": novelty_distances_embed
     }
+
+    # oracle embedding diversity and novelty
+    if use_oracle_embeddings:
+        oracle_embeddings = extract_oracle_embeddings(sequences, oracle)
+        oracle_embeddings_ref = extract_oracle_embeddings(refs_seq, oracle)
+        diversity_score_embed, novelty_score_embed, internal_distances_embed, novelty_distances_embed = \
+            calc_novelty_diversity_embeddings(oracle_embeddings, oracle_embeddings_ref)
+        results["diversity_score_embed"] = diversity_score_embed
+        results["novelty_score_embed"] = novelty_score_embed
+        results["internal_distances_embed"] = internal_distances_embed
+        results["ref_distances_embed"] = novelty_distances_embed
+
 
     return results
 

@@ -21,6 +21,15 @@ class FitnessModel(ABC, torch.nn.Module, Generic[GenoType]):
         self.device = "cuda" if torch.cuda.is_available() and config.cuda else "cpu"
 
     @abstractmethod
+    def retrain(self, data_x: torch.Tensor, data_y: torch.Tensor):
+        """
+        Abstract method to retrain the model with new data.
+        :param data_x: Input features for retraining.
+        :param data_y: Target values for retraining.
+        """
+        pass
+
+    @abstractmethod
     def __call__(self, genotypes: list[GenoType]) -> list[float]:
         """
         Abstract method to process a batch of sequences and return scores.

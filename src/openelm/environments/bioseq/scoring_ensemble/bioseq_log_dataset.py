@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 from openelm.environments.bioseq.scoring_ensemble.preprocess import sequence_nuc_to_one_hot, log_interpolated_one_hot
 
 
-class UTRLogDataset(Dataset):
+class BioseqLogDataset(Dataset):
     def __init__(self, int_sequences, float_scores, disk_target="one_hot_log_data", file_name='one_hot_log_data.pt'):
         # check if data exists already in disk_target
         disk_file_target = os.path.join(disk_target, file_name)
@@ -29,7 +29,7 @@ class UTRLogDataset(Dataset):
         else:
             print(f"Data not found in {disk_file_target}. Creating new dataset.")
             os.makedirs(disk_target, exist_ok=True)
-            one_hot = sequence_nuc_to_one_hot(torch.tensor(int_sequences))  # (N, L, K)
+            one_hot = sequence_nuc_to_one_hot(torch.tensor(int_sequences, dtype=torch.int64))  # (N, L, K)
             self.data_x = log_interpolated_one_hot(one_hot)                 # (N, L, K-1)
             self.data_y = torch.tensor(float_scores).float()
             # save to disk

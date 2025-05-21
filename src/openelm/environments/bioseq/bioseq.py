@@ -46,6 +46,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         # models
         self.mutation_model = get_mutation_model(mutation_model_config) 
         self.fitness_function = get_fitness_model(fitness_model_config)
+        
 
         self.batch_size = config.batch_size
         self.genotype_space = np.array(
@@ -86,12 +87,16 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
             self.task = None
             # Load the reference set from the offline data directory
             self.offline_data_x = np.load(os.path.join(config.offline_data_dir, self.config.offline_data_x_file))
+            self.offline_data_y = np.load(os.path.join(config.offline_data_dir, self.config.offline_data_y_file))
             self.offline_data_x_gen = np.array([RNAGenotype(seq) for seq in self.offline_data_x])
             self.min_output = config.oracle_min_score
             self.max_output = config.oracle_max_score
-
         else:
             raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v1, UTR-ResNet-v0-CUSTOM")
+        
+        if self.config.retrain_fitness_model:
+            logger.info("Retraining fitness model...")
+            self.fitness_function.retrain(self.offline_data_x, self.offline_data_y)
         
         self.reference_set = self._load_ref_set()
         self.oracle = self._load_oracle()  # Load the oracle model from disk, for final evaluation on the solutions (not used in the optimization process)
@@ -161,15 +166,15 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
                 fit=False,  # do not retrain
                 is_absolute=True,
                 disk_target=oracle_model_path)
+            
+            logger.info(
+                f"Oracle params:\n"
+                f"rank_correlation: {oracle.params['rank_correlation']}\n"
+                f"model_kwargs: {oracle.params['model_kwargs']}\n"
+                f"split_kwargs: {oracle.params['split_kwargs']}"
+        )
         else:
             raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v1, UTR-ResNet-v0-CUSTOM")
-
-        logger.info(
-            f"Oracle params:\n"
-            f"rank_correlation: {oracle.params['rank_correlation']}\n"
-            f"model_kwargs: {oracle.params['model_kwargs']}\n"
-            f"split_kwargs: {oracle.params['split_kwargs']}"
-        )
 
         return oracle
 
@@ -208,12 +213,12 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         rng = np.random.default_rng(seed)  # Ensures reproducibility, not using the self.rng
         random_indexes = rng.choice(self.offline_data_x.shape[0], size=self.batch_size, replace=False)
         initial_sequences = self.offline_data_x[random_indexes]
-        if self.config.task == 'TFBind10-Exact-v0':
+        if self.config.task == 'TFBind10-Exact-v1':
             initial_genotypes = [DNAGenotype(seq) for seq in initial_sequences]
         elif self.config.task == 'UTR-ResNet-v0-CUSTOM':
             initial_genotypes = [RNAGenotype(seq) for seq in initial_sequences]
         else:
-            raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v0, UTR-ResNet-v0-CUSTOM")
+            raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v1, UTR-ResNet-v0-CUSTOM")
         logger.info(f"index of initial sequences:\n { random_indexes[:5]}")
         return initial_genotypes
 
@@ -284,12 +289,12 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         """
         Generate a batch of random genotypes.
         """
-        if self.config.task == 'TFBind10-Exact-v0':
+        if self.config.task == 'TFBind10-Exact-v1':
             return [DNAGenotype(self._random_seq()) for _ in range(self.batch_size)]
         elif self.config.task == 'UTR-ResNet-v0-CUSTOM':
             return [RNAGenotype(self._random_seq()) for _ in range(self.batch_size)]
         else:
-            raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v0, UTR-ResNet-v0-CUSTOM")
+            raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v1, UTR-ResNet-v0-CUSTOM")
 
     def mutate(self, genomes: list[BioSeqGenotype]) -> list[BioSeqGenotype]:
         """
@@ -347,6 +352,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
             k=k,
             plot=(save_dir is not None),
             save_path=os.path.join(save_dir, "normalized") if save_dir is not None else None,
+            use_oracle_embeddings=(self.config.task == 'UTR-ResNet-v0-CUSTOM')
         )
         results_unnormalized = evaluate_solutions_set(
             solutions=genotypes,
@@ -358,10 +364,11 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
             k=k,
             plot=(save_dir is not None),
             save_path=os.path.join(save_dir, "unnormalized") if save_dir is not None else None,
+            use_oracle_embeddings=(self.config.task == 'UTR-ResNet-v0-CUSTOM')
         )
         results = {
-            "normalized": results_normalized,
-            "unnormalized": results_unnormalized
+            "normalized/": results_normalized,
+            "unnormalized/": results_unnormalized
         }
         return results
 

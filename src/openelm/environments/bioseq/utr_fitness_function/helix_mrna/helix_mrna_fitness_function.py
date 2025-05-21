@@ -53,6 +53,14 @@ class HelixMRNAFitnessFunction(FitnessModel[RNAGenotype]):
         helix_model.load_model(model_path)
         helix_model.eval()
         return helix_model
+    
+    def retrain(self, data_x: list[str], data_y: list[float]):
+        """
+        retrain the model with new data.
+        :param data_x: Input sequences to be scored.
+        :param data_y: Scores for the input sequences.
+        """
+        raise NotImplementedError("Retraining is not implemented for HelixMRNAFitnessFunction. ")
 
     def __call__(self, genotypes: list[RNAGenotype]) -> list[float]:
         """

@@ -44,7 +44,7 @@ def setup_logging(log_file):
     # Optionally add handler to all existing loggers
     # This can be useful in case some modules have created their loggers early
     for name in logging.root.manager.loggerDict:
-        if name not in ["wandb"]:
+        if name not in ["wandb", "helical", "dill"]:
             logging.getLogger(name).addHandler(file_handler)
             logging.getLogger(name).setLevel(logging.INFO)
             logging.getLogger(name).propagate = True

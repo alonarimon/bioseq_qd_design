@@ -1,14 +1,17 @@
+from datetime import datetime
 import os
-
 import numpy as np
 import torch
+import logging
 
 from openelm.configs import FitnessBioEnsembleConfig
 from openelm.environments.bioseq.bioseq import RNAGenotype
 from openelm.environments.bioseq.fitness_model import FitnessModel
 from openelm.environments.bioseq.scoring_ensemble.scoring_model import ScoringNetwork
 from openelm.environments.bioseq.scoring_ensemble.preprocess import sequence_nuc_to_one_hot, log_interpolated_one_hot
+from openelm.environments.bioseq.scoring_ensemble.train_scoring_models import train_scoring_models
 
+logger = logging.getLogger(__name__)
 
 def load_scoring_ensemble(seq_len, K, model_dir, device="cuda", ensemble_size=1):
     """
@@ -42,9 +45,38 @@ class FitnessScoringEnsemble(FitnessModel[RNAGenotype]):
         :param config: Configuration object containing the model parameters.
         """
         super().__init__(config)
-        self.scoring_ensemble = load_scoring_ensemble(config.sequence_length, config.alphabet_size,
-            config.model_path, self.device, config.ensemble_size)
+        self.models_dir = config.model_path
+        self.scoring_ensemble = None
+        if config.load_existing_models:
+            self.scoring_ensemble = load_scoring_ensemble(config.gen_max_len, config.alphabet_size,
+                self.models_dir, self.device, config.ensemble_size)
         self.beta = config.beta
+    
+    def retrain(self, data_x: np.ndarray, data_y: np.ndarray):
+        """
+        Create a new scoring ensemble modules.
+        """
+        time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        self.models_dir = os.path.join(self.config.model_path, time)
+        train_scoring_models(
+            data_x, data_y,
+            disk_target_data=self.models_dir,
+            validation_fraction=self.config.validation_fraction,
+            save_dir=self.models_dir,
+            seq_len=self.config.gen_max_len,
+            alphabet_size=self.config.alphabet_size,
+            ensemble_size=self.config.ensemble_size,
+            use_conservative=self.config.use_conservative,
+            device=self.device,
+            epochs=self.config.epochs,
+            batch_size=self.config.batch_size
+        )
+        self.scoring_ensemble = load_scoring_ensemble(
+            self.config.gen_max_len, self.config.alphabet_size,
+            self.models_dir, self.device, self.config.ensemble_size
+        )    
+
+        
 
     def __call__(self, genotypes: list[RNAGenotype]) -> list[float]:
         """
@@ -52,6 +84,9 @@ class FitnessScoringEnsemble(FitnessModel[RNAGenotype]):
         :param genotypes: Input genotypes to be scored.
         :return: Scores for the input sequences.
         """
+        if self.scoring_ensemble is None:
+            raise ValueError("Scoring ensemble not initialized. Call retrain() first.")
+    
         if len(genotypes) > self.config.batch_size:
             raise ValueError(f"Batch size {len(genotypes)} exceeds the configured batch size {self.config.batch_size}.")
 
@@ -63,11 +98,10 @@ class FitnessScoringEnsemble(FitnessModel[RNAGenotype]):
 
         with torch.no_grad():
             # Get scores from each model in the ensemble
-            scores = [model(log_x).detach().cpu().numpy() for model in self.scoring_ensemble]
+            scores = np.array([model(log_x).detach().cpu().numpy() for model in self.scoring_ensemble])
 
         # mean and std of scores
-        scores = np.array(scores)
         mean = np.mean(scores, axis=0)
         std = np.std(scores, axis=0)
-
+        
         return list(mean - self.beta * std)

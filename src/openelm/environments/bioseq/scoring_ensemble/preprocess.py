@@ -3,6 +3,9 @@
 import torch
 import numpy as np
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Dictionary returning one-hot encoding of nucleotides.
 NUC_D = {0: [1, 0, 0, 0], 1: [0, 1, 0, 0],
