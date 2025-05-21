@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from openelm.configs import FitnessBioEnsembleConfig, ModelConfig, FitnessHelixMRNAConfig
 from openelm.environments.bioseq.bioseq import logger, RNAGenotype
-from openelm.environments.bioseq.utr_fitness_function.fitness_model import get_fitness_model
+from openelm.environments.bioseq.fitness_model import get_fitness_model
 import logging
 
 bioseq_base_dir = Path("/workdir")

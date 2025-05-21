@@ -5,7 +5,7 @@ import torch
 
 from openelm.configs import FitnessBioEnsembleConfig
 from openelm.environments.bioseq.bioseq import RNAGenotype
-from openelm.environments.bioseq.utr_fitness_function.fitness_model import FitnessModel
+from openelm.environments.bioseq.fitness_model import FitnessModel
 from openelm.environments.bioseq.scoring_ensemble.scoring_model import ScoringNetwork
 from openelm.environments.bioseq.scoring_ensemble.preprocess import sequence_nuc_to_one_hot, log_interpolated_one_hot
 

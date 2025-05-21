@@ -5,7 +5,7 @@ import torch
 from helical.models.helix_mrna import HelixmRNAFineTuningModel, HelixmRNAConfig
 from openelm.configs import FitnessHelixMRNAConfig
 from openelm.environments.bioseq.bioseq import RNAGenotype
-from openelm.environments.bioseq.utr_fitness_function.fitness_model import FitnessModel
+from openelm.environments.bioseq.fitness_model import FitnessModel
 
 
 class HelixMRNAFitnessFunction(FitnessModel[RNAGenotype]):

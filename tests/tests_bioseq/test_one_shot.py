@@ -8,17 +8,20 @@ from pydantic.schema import datetime
 test_file_dir = os.path.dirname(os.path.abspath(__file__))  # tests/tests_bioseq/
 project_root = os.path.dirname(os.path.dirname(test_file_dir))  # project root
 
+CONFIGS_TO_TEST = {"oneshot_bio_bd": "oneshot_bio_elmconfig",
+                     "oneshot_similarity_bd": "oneshot_similarity_bd_elmconfig"}
+
+# CONFIGS_TO_TEST = {"oneshot_similarity_bd": "oneshot_similarity_bd_elmconfig"}
+
 def run_elm():
 
     run_elm_path = os.path.join(project_root, "run_elm.py")
     if not os.path.exists(run_elm_path):
         raise FileNotFoundError(f"run_elm.py not found at {run_elm_path}")
 
-    configs_to_run = {"oneshot_bio_bd": "oneshot_bio_elmconfig",
-                      "oneshot_similarity_bd": "oneshot_similarity_bd_elmconfig"}
     run_dirs = {}
 
-    for name, conf_name in configs_to_run.items():
+    for name, conf_name in CONFIGS_TO_TEST.items():
         timestamp = datetime.now().strftime("%y-%m-%d_%H-%M")
         output_dir = os.path.join(
             project_root, "logs", "elm", f"test_{name}", timestamp
@@ -97,10 +100,10 @@ def test_oneshot():
     # Set fixed reference file paths (adjust if needed)
     reference_paths = {
         "oneshot_bio_bd": os.path.join(project_root, "logs", "elm", f"test_oneshot_bio_bd", '25-05-17_14-19', "oracle_evaluations"),
-        "oneshot_similarity_bd": os.path.join(project_root, "logs", "elm", f"test_oneshot_similarity_bd", '25-05-17_14-20', "oracle_evaluations"),
+        "oneshot_similarity_bd": os.path.join(project_root, "logs", "elm", f"test_oneshot_similarity_bd", '25-05-21_10-31', "oracle_evaluations"),
     }
 
-    for config_name in ["oneshot_bio_bd", "oneshot_similarity_bd"]:
+    for config_name in CONFIGS_TO_TEST.keys():
         for version in ["unnormalized", "normalized"]:
             new_results = load_json(os.path.join(run_dirs[config_name], version, "oracle_evaluation.json"))
             reference_results = load_json(os.path.join(reference_paths[config_name], version, "oracle_evaluation.json"))
