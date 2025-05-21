@@ -8,6 +8,7 @@ import torch
 from scipy.special import softmax
 from tqdm import tqdm
 import Levenshtein
+import tensorflow as tf
 
 import design_bench
 from design_bench.datasets.discrete_dataset import DiscreteDataset
@@ -19,7 +20,7 @@ from openelm.configs import ModelConfig, QDEnvConfig, QDBioRNAEnvConfig
 from openelm.environments.base import BaseEnvironment, Phenotype
 from openelm.environments.bioseq.genotypes import BioSeqGenotype, RNAGenotype, DNAGenotype
 from openelm.mutation_model import get_mutation_model
-from openelm.environments.bioseq.utr_fitness_function.fitness_model import get_fitness_model
+from openelm.environments.bioseq.fitness_model import get_fitness_model
 from openelm.environments.bioseq.utils.evaluation import evaluate_solutions_set
 
 logger = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
             mutation_model (MutationModel): Mutation model for mutating sequences.
         """
         super().__init__() #todo: check if this is needed
-        print(f"Initializing RNAEvolution environment with config: {config}")
+        logger.info(f"Initializing BioSeqEvolution environment with config: {config}")
         self.config = config
         
         
@@ -56,7 +57,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         # set all random seeds for reproducibility
         self.rng = np.random.default_rng(config.seed)
         self.mutation_model.set_rng_state(self.rng)
-
+        tf.random.set_seed(config.seed)
         torch.manual_seed(config.seed)
         np.random.seed(config.seed)
         if torch.cuda.is_available():
@@ -65,11 +66,8 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         # initialise task specific variables
         if self.config.task == 'TFBind10-Exact-v1': #TODO: also the utr resnet from the task framework
             self.task = design_bench.make(self.config.task, relabel=False)
-            self.oracle = self.task.oracle
- 
-            offline_dataset = self.task.dataset
-            self.offline_data_x = offline_dataset.x
-            self.offline_data_y = offline_dataset.y
+            self.offline_data_x = self.task.dataset.x
+            self.offline_data_y = self.task.dataset.y
             self.min_output = self.task.dataset_min_output
             self.max_output = self.task.dataset_max_output
             if self.min_output == -np.inf:
@@ -87,8 +85,6 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
             # Load the reference set from the offline data directory
             self.offline_data_x = np.load(os.path.join(config.offline_data_dir, self.config.offline_data_x_file))
             self.offline_data_x_gen = np.array([RNAGenotype(seq) for seq in self.offline_data_x])
-            #TODO - GENERALISE _load_oracle() function 
-            self.oracle = self._load_oracle()  # Load the oracle model from disk, for final evaluation on the solutions (not used in the optimization process)
             self.min_output = config.oracle_min_score
             self.max_output = config.oracle_max_score
 
@@ -96,22 +92,25 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
             raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v1, UTR-ResNet-v0-CUSTOM")
         
         self.reference_set = self._load_ref_set()
-        
+        self.oracle = self._load_oracle()  # Load the oracle model from disk, for final evaluation on the solutions (not used in the optimization process)
+
+
         if self.config.bd_type == "similarity_based":
-            self.projection_matrix = np.random.uniform(low=0.0, high=1.0, size=(config.size_of_refs_collection, len(config.behavior_space))).astype(np.float32)  # Initialize W from N(0,1)
+            self.projection_matrix = self.rng.uniform(low=0.0, high=1.0, size=(config.size_of_refs_collection, len(config.behavior_space))).astype(np.float32)  # Initialize W from N(0,1)
+            logger.info(f"Projection matrix W: {self.projection_matrix}")
             logger.info(f"Projection matrix W shape: {self.projection_matrix.shape}")
             if config.distance_normalization_constant < 0:
                 self.R_normalization_constant = self._get_r_distance_norm_const(subsample=True)  # todo: need to be done once without subsampling
             else:
                 self.R_normalization_constant = config.distance_normalization_constant
             logger.info(f"R normalization constant: {self.R_normalization_constant}")
+        
 
         self.bd_min = 0
         self.bd_max = 1
         if self.config.normalize_bd:
             subsample = self.config.bd_type == "similarity_based" # we subsample the offline data only for the similarity based bd, because it is expensive
             self.bd_min, self.bd_max = self.get_training_bd_stats(subsample=subsample)
-
         logger.info(f"Behavioral descriptor min: {self.bd_min}, max: {self.bd_max}")
 
 
@@ -144,21 +143,24 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         Load the oracle model from disk.
         :return: Loaded oracle model.
         """
-        # Load validation split
-        val_x = [DiskResource(os.path.join(self.config.oracle_model_path, 'oracle_train_split', "split-val-x-0.npy"))]
-        val_y = [DiskResource(os.path.join(self.config.oracle_model_path, 'oracle_train_split', "split-val-y-0.npy"))]
-        val_dataset = DiscreteDataset(val_x, val_y, num_classes=4)
-        oracle_model_path = os.path.join(self.config.oracle_model_path, "oracle")
+        if self.config.task == 'TFBind10-Exact-v1':
+            oracle = self.task.oracle
+        elif self.config.task == 'UTR-ResNet-v0-CUSTOM':
+            # Load validation split
+            val_x = [DiskResource(os.path.join(self.config.oracle_model_path, 'oracle_train_split', "split-val-x-0.npy"))]
+            val_y = [DiskResource(os.path.join(self.config.oracle_model_path, 'oracle_train_split', "split-val-y-0.npy"))]
+            val_dataset = DiscreteDataset(val_x, val_y, num_classes=4)
+            oracle_model_path = os.path.join(self.config.oracle_model_path, "oracle")
 
-        # Load the saved oracle (fit=False ensures it loads from disk)
-        oracle = ResNetOracle(
-            val_dataset,
-            noise_std=0.0,
-            fit=False,  # do not retrain
-            is_absolute=True,
-            disk_target=oracle_model_path
-
-        )
+            # Load the saved oracle (fit=False ensures it loads from disk)
+            oracle = ResNetOracle(
+                val_dataset,
+                noise_std=0.0,
+                fit=False,  # do not retrain
+                is_absolute=True,
+                disk_target=oracle_model_path)
+        else:
+            raise ValueError(f"Unknown task: {self.config.task}. Supported: TFBind10-Exact-v1, UTR-ResNet-v0-CUSTOM")
 
         logger.info(
             f"Oracle params:\n"
@@ -268,6 +270,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         :return: numpy array of the reference set
         """
         random_indexes = self.rng.choice(self.offline_data_x.shape[0], size=self.config.size_of_refs_collection, replace=False)
+        logger.info(f"index of reference set:\n { random_indexes[:5]}")
         reference_set = self.offline_data_x_gen[random_indexes]
         return reference_set.tolist() #todo: work with np arrays instead of lists
 
