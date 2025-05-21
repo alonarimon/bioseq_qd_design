@@ -39,7 +39,7 @@ def load_env(env_name: str) -> Type[BaseEnvironment]:
         from openelm.environments.poetry import PoetryEvolution
 
         return PoetryEvolution
-    elif env_name == "qd_bio_rna":
+    elif env_name == "qd_bio_utr" or env_name == "qd_bio_dna":
         from openelm.environments.bioseq.bioseq import BioSeqEvolution
 
         return BioSeqEvolution

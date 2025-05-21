@@ -16,7 +16,7 @@ from design_bench.disk_resource import DiskResource
 from design_bench.oracles.tensorflow import ResNetOracle
 
 
-from openelm.configs import ModelConfig, QDEnvConfig, QDBioRNAEnvConfig
+from openelm.configs import ModelConfig, QDBioEnvConfig, QDBioTaskBasedEnvConfig, QDBioUTREnvConfig
 from openelm.environments.base import BaseEnvironment, Phenotype
 from openelm.environments.bioseq.genotypes import BioSeqGenotype, RNAGenotype, DNAGenotype
 from openelm.mutation_model import get_mutation_model
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
     def __init__(
             self,
-            config: QDBioRNAEnvConfig,
+            config: QDBioEnvConfig,
             mutation_model_config: ModelConfig, #todo: not in use, GET CONFIG?
             fitness_model_config: ModelConfig,
     ):
@@ -65,6 +65,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
 
         # initialise task specific variables
         if self.config.task == 'TFBind10-Exact-v1': #TODO: also the utr resnet from the task framework
+            assert isinstance(self.config, QDBioTaskBasedEnvConfig), "TFBind10-Exact-v1 task requires QDBioTaskBasedEnvConfig"
             self.task = design_bench.make(self.config.task, relabel=False)
             self.offline_data_x = self.task.dataset.x
             self.offline_data_y = self.task.dataset.y
@@ -81,6 +82,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
             self.offline_data_x_gen = np.array([DNAGenotype(seq) for seq in self.offline_data_x])
 
         elif self.config.task == 'UTR-ResNet-v0-CUSTOM':
+            assert isinstance(self.config, QDBioUTREnvConfig), "UTR-ResNet-v0-CUSTOM task requires QDBioUTREnvConfig"
             self.task = None
             # Load the reference set from the offline data directory
             self.offline_data_x = np.load(os.path.join(config.offline_data_dir, self.config.offline_data_x_file))

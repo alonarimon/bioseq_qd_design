@@ -10,8 +10,7 @@ from design_bench.oracles.tensorflow import ResNetOracle
 from scipy.spatial.distance import squareform
 
 from openelm.algorithms.map_elites import CVTMAPElites
-from openelm.configs import ELMConfig, FitnessBioEnsembleConfig, FitnessHelixMRNAConfig, MAPElitesConfig, MutatorHelixConfig, QDBioRNAEnvConfig, CVTMAPElitesConfig, BioRandomModelConfig, QDConfig
-from openelm.mutation_model import RandomSequenceMutator
+from openelm.configs import ELMConfig, FitnessBioEnsembleConfig, FitnessHelixMRNAConfig, MAPElitesConfig, MutatorHelixConfig, QDBioEnvConfig, CVTMAPElitesConfig, BioRandomModelConfig, QDBioUTREnvConfig, QDConfig
 
 ORACLE_NAME = "original_v0_minmax_orig"
 DATASET_PATH = r"/design-bench-detached/design_bench_data/utr"
@@ -50,11 +49,11 @@ def cast_qd_config(cfg: Any):
     raise ValueError("Unknown QD config")
 
 def cast_env_config(cfg: Any):
-    if isinstance(cfg, QDBioRNAEnvConfig):
+    if isinstance(cfg, QDBioEnvConfig):
         return cfg
     if isinstance(cfg, dict):
         if cfg.get("env_name") == "qd_bio_rna":
-            return QDBioRNAEnvConfig(**cfg)
+            return QDBioUTREnvConfig(**cfg)
     raise ValueError("Unknown env config")
 
 def cast_elm_config(cfg: Any):

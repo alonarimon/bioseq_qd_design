@@ -134,8 +134,8 @@ class QDEnvConfig(EnvConfig):
     )
 
 @dataclass
-class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this will be general
-    env_name: str = "qd_bio_rna" # todo: naming
+class QDBioEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this will be general
+    env_name: str = "qd_bio_env" # todo: naming
     behavior_space: list[list[float]] = field(
         default_factory=lambda: [
             [0, 1],
@@ -146,18 +146,32 @@ class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this wil
     sequence_length: int = 50
     alphabet: list[int] = field(default_factory=lambda: [0, 1, 2, 3]) # [A, C, G, U]
     size_of_refs_collection: int =  16384 # Number of reference sequences to use for novelty evaluation and BD
+    bd_type: str = "nucleotides_frequencies" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred). "similarity_based": The phenotype is a vector of the similarity of the sequence to the offline ref data.
+    normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
+    initial_population_sample_seed: int = 123  # initial population sample seed
+    distance_normalization_constant: float = MISSING  # Constant for distance normalization (for the similarity-based BD). -1 means constant will be automatically calculated from the offline data.
+    task: str = MISSING # 'UTR-ResNet-v0-CUSTOM' or 'TFBind10-Exact-v0'
+
+
+@dataclass
+class QDBioTaskBasedEnvConfig(QDBioEnvConfig):
+    env_name: str = "qd_bio_dna"
+    distance_normalization_constant: float = -1  # Constant for distance normalization (for the similarity-based BD). -1 means constant will be automatically calculated from the offline data.
+    task: str = 'TFBind10-Exact-v1'
+    
+    
+@dataclass
+class QDBioUTREnvConfig(QDBioEnvConfig):
+    env_name: str = "qd_bio_utr"
     offline_data_dir: str = os.path.join("design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig", "sampled_offline_relabeled_data", "sampled_data_fraction_1_3_seed_42")
     offline_data_x_file: str = "x.npy"  # Name of the offline data X file
     offline_data_y_file: str = "y.npy"  # Name of the offline data Y file
     oracle_model_path: str = os.path.join("design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig")  # Path to the oracle model
     oracle_max_score: float = 0.7381 # Max score of the oracle model over UTR dataset
     oracle_min_score: float = 0.1885 # Min score of the oracle model over UTR dataset
-    bd_type: str = "nucleotides_frequencies" #"nucleotides_frequencies": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred). "similarity_based": The phenotype is a vector of the similarity of the sequence to the offline ref data.
-    normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
     distance_normalization_constant: float = 14.3378899  # Constant for distance normalization (for the similarity-based BD). -1 means constant will be automatically calculated from the offline data.
-    initial_population_sample_seed: int = 123  # initial population sample seed
-    task: str = 'UTR-ResNet-v0-CUSTOM' # 'UTR-ResNet-v0-CUSTOM' or 'TFBind10-Exact-v0'
-
+    task: str = 'UTR-ResNet-v0-CUSTOM'
+    
     def __post_init__(self):
         path_fields = ['offline_data_dir', 'oracle_model_path']
         for field_name in path_fields:
@@ -171,7 +185,7 @@ class QDBioRNAEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this wil
 
 defaults_elm = [
     {"qd": "cvtmapelites"},
-    {"env": "qd_bio_rna"},
+    {"env": "qd_bio_utr"},
     {"mutation_model": "mutator_helix_mrna"}, # can be "bio_random" or "mutator_helix_mrna"
     {"fitness_model": "fitness_helix_mrna"}, # can be "fitness_bio_ensemble" or "fitness_helix_mrna"
     "_self_",
@@ -203,7 +217,7 @@ class OneShotBioELMConfig(ELMConfig):
         {"mutation_model": "bio_random"},
         {"fitness_model": "fitness_bio_ensemble"},
         {"qd": "cvtmapelites"},
-        {"env": "qd_bio_rna"},
+        {"env": "qd_bio_utr"},
         "_self_",
     ])
     qd: Any = field(default_factory=lambda: CVTMAPElitesConfig(
@@ -224,8 +238,8 @@ class OneShotBioELMConfig(ELMConfig):
         eval_with_oracle=True,
         number_of_final_solutions=128,
     ))
-    env: Any = field(default_factory=lambda: QDBioRNAEnvConfig(
-        env_name="qd_bio_rna",
+    env: Any = field(default_factory=lambda: QDBioUTREnvConfig(
+        env_name="qd_bio_utr",
         behavior_space=[
             [0, 1],
             [0, 1],
@@ -253,34 +267,9 @@ class OneShotBioELMConfig(ELMConfig):
 
 
 @dataclass
-class OneShotSimilarityBDELMConfig(ELMConfig):
-    defaults: list[Any] = field(default_factory=lambda: [
-        {"mutation_model": "bio_random"},
-        {"fitness_model": "fitness_bio_ensemble"},
-        {"qd": "cvtmapelites"},
-        {"env": "qd_bio_rna"},
-        "_self_",
-    ])
-    qd: Any = field(default_factory=lambda: CVTMAPElitesConfig(
-        qd_name="cvtmapelites",
-        n_niches=2000,
-        cvt_samples=10000,
-        init_steps=1,
-        total_steps=100000,
-        history_length=1,
-        save_history=False,
-        save_snapshot_interval=5000,
-        log_snapshot_dir="",
-        seed=42,
-        save_np_rng_state=False,
-        load_np_rng_state=False,
-        crossover=False,
-        crossover_parents=2,
-        eval_with_oracle=True,
-        number_of_final_solutions=128,
-    ))
-    env: Any = field(default_factory=lambda: QDBioRNAEnvConfig(
-        env_name="qd_bio_rna",
+class OneShotSimilarityBDELMConfig(OneShotBioELMConfig):
+    env: Any = field(default_factory=lambda: QDBioUTREnvConfig(
+        env_name="qd_bio_utr",
         behavior_space=[
             [0, 1],
             [0, 1]
@@ -298,12 +287,6 @@ class OneShotSimilarityBDELMConfig(ELMConfig):
         initial_population_sample_seed=123,
         task='UTR-ResNet-v0-CUSTOM'
     ))
-    mutation_model: Any = field(default_factory=lambda: BioRandomModelConfig(
-        model_name="bio_random",
-        model_path="",  
-        alphabet=[0, 1, 2, 3], # [A, C, G, U]
-        mutation_length=1
-    ))
 
 
 def register_configstore() -> ConfigStore:
@@ -311,7 +294,9 @@ def register_configstore() -> ConfigStore:
     cs = ConfigStore.instance()
 
     cs.store(group="env", name="qdaif", node=QDEnvConfig)
-    cs.store(group="env", name="qd_bio_rna", node=QDBioRNAEnvConfig)
+    cs.store(group="env", name="qd_bio_env", node=QDBioEnvConfig)
+    cs.store(group="env", name="qd_bio_utr", node=QDBioUTREnvConfig)
+    cs.store(group="env", name="qd_bio_dna", node=QDBioTaskBasedEnvConfig)
     cs.store(group="qd", name="mapelites", node=MAPElitesConfig)
     cs.store(group="qd", name="cvtmapelites", node=CVTMAPElitesConfig)
     cs.store(group="mutation_model", name="bio_random", node=BioRandomModelConfig)
