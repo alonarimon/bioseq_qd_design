@@ -52,7 +52,7 @@ def cast_env_config(cfg: Any):
     if isinstance(cfg, QDBioEnvConfig):
         return cfg
     if isinstance(cfg, dict):
-        if cfg.get("env_name") == "qd_bio_rna":
+        if cfg.get("env_name") == "qd_bio_rna" or cfg.get("env_name") == "qd_bio_utr":
             return QDBioUTREnvConfig(**cfg)
     raise ValueError("Unknown env config")
 

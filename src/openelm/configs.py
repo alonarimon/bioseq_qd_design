@@ -171,7 +171,7 @@ class QDBioEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this will b
     initial_population_sample_seed: int = 123  # initial population sample seed
     distance_normalization_constant: float = MISSING  # Constant for distance normalization (for the similarity-based BD). -1 means constant will be automatically calculated from the offline data.
     task: str = MISSING # 'UTR-ResNet-v0-CUSTOM' or 'TFBind10-Exact-v1'
-    retrain_fitness_model: bool = True # Whether to retrain the fitness model with the offline data
+    retrain_fitness_model: bool = False # Whether to retrain the fitness model with the offline data
 
 @dataclass
 class QDBioTaskBasedEnvConfig(QDBioEnvConfig):

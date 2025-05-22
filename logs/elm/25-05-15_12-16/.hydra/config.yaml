@@ -86,7 +86,7 @@ fitness_model:
   gen_max_len: 50
   batch_size: 128
   model_name: fitness_bio_ensemble
-  model_path: src/openelm/environments/bioseq/utr_fitness_function/one_shot_scoring_ensemble/scoring_models
+  model_path: src/openelm/environments/bioseq/utr_fitness_function/utr_scoring_ensemble/scoring_models
   logits_only: false
   do_sample: true
   num_return_sequences: 1
@@ -97,7 +97,6 @@ fitness_model:
   ensemble_size: 4
   beta: 2.0
   alphabet_size: 4
-  sequence_length: 50
 output_dir: logs/
 run_name: 2025-05-15_12-16
 wandb_group: run_elm
