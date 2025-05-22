@@ -422,7 +422,6 @@ class MAPElitesBase:
 
             if (
                     self.save_snapshot_interval is not None
-                    and n_steps != 0
                     and n_steps % self.save_snapshot_interval == 0
             ):
                 self.save_results(step=n_steps)
