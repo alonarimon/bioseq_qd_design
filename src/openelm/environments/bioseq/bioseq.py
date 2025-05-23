@@ -258,12 +258,12 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         :param x: genotype
         :return: phenotype
         """
-        if self.config.bd_type == "nucleotides_frequencies":
+        if self.config.bd_type == "freq" or self.config.bd_type == "nucleotides_frequencies":
             bd = self._nucleotides_frequencies(x)
         elif self.config.bd_type == "similarity_based":
             bd = self._similarity_based_bd(x)
         else:
-            raise ValueError(f"Unknown bd_type: {self.config.bd_type}. Supported: nucleotides_frequencies")
+            raise ValueError(f"Unknown bd_type: {self.config.bd_type}. Supported: freq, similarity_based")
 
         if self.config.normalize_bd:
             # normalize according to the min and max values and clip to [0, 1]

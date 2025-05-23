@@ -32,7 +32,7 @@ def cast_mutation_model(cfg: Any):
     if isinstance(cfg, BioRandomModelConfig) or isinstance(cfg, MutatorHelixConfig):
         return cfg
     if isinstance(cfg, dict):
-        if cfg.get("model_name") == "bio_random":
+        if cfg.get("model_name") == "random" or cfg.get("model_name") == "bio_random":
             return BioRandomModelConfig(**cfg)
         elif cfg.get("model_name") == "mutator_helix_mrna":
             return MutatorHelixConfig(**cfg)

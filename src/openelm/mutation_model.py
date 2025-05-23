@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_mutation_model(config: ModelConfig): #todo: move from this file
-    if config.model_name == "bio_random":
+    if config.model_name == "random":
         return RandomSequenceMutator(config=config) #todo ?
     elif config.model_name == "mutator_helix_mrna":
         return HelixMRNASequenceMutator(config=config)
