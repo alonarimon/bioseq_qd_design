@@ -1,5 +1,5 @@
 {
-    "all_solutions": {
+    "all_solutions/": {
         "max_score": 0.9989019632339478,
         "mean_score": 0.8478801877875077,
         "diversity_score_first_order": 29.109247850966366,
@@ -9,7 +9,7 @@
         "diversity_score_embed": 0.030591489721492407,
         "novelty_score_embed": 0.014487210631445374
     },
-    "top_k_solutions": {
+    "top_k_solutions/": {
         "max_score": 0.9989019632339478,
         "mean_score": 0.9414886441081762,
         "diversity_score_first_order": 25.29896653543307,
@@ -19,7 +19,7 @@
         "diversity_score_embed": 0.018547191806684658,
         "novelty_score_embed": 0.013407634526504236
     },
-    "downsampled_solutions": {
+    "downsampled_solutions/": {
         "max_score": 0.9758856296539307,
         "mean_score": 0.8572229167912155,
         "diversity_score_first_order": 29.040108267716537,
