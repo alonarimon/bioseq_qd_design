@@ -10,7 +10,7 @@ matplotlib
 
 # NLP / Transformers
 transformers>=4.22.0
-tf-keras # Compatibility for transformers TF models
+tf-keras==2.17.0 # Compatibility for transformers TF models
 tokenizers
 datasets~=2.20.0
 huggingface-hub~=0.30.1
