@@ -209,8 +209,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         Generate a batch of initial sequences by randomly sample from the offline data.
         @return: list of RNAGenotype
         """
-        seed = self.config.initial_population_sample_seed
-        rng = np.random.default_rng(seed)  # Ensures reproducibility, not using the self.rng
+        rng = np.random.default_rng(self.config.seed)  # Ensures reproducibility, not using the self.rng
         random_indexes = rng.choice(self.offline_data_x.shape[0], size=self.batch_size, replace=False)
         initial_sequences = self.offline_data_x[random_indexes]
         if self.config.task == 'TFBind10-Exact-v1':

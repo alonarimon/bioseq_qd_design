@@ -266,10 +266,12 @@ if __name__ == '__main__':
     naming_for_wandb = {
         "mutator_helix_mrna": "helix",
         "fitness_helix_mrna": "helix",
+        "helix": "helix",
         "random": "random",
         "bio_random": "random",
         "fitness_bio_ensemble": "ensemble",
         "fitness_utr_ensemble": "ensemble",
+        "utr_ensemble": "ensemble",
         "nucleotides_frequencies": "freq",
         "freq": "freq",
     }

@@ -46,13 +46,13 @@ class BioRandomModelConfig(ModelConfig):
     model_name: str = "random"
     model_path: str = ""
     alphabet: list[int] = field(default_factory=lambda: [0, 1, 2, 3]) # [A, C, G, U]
-    mutation_length: int = 1
+    mutation_length: int = 5
     gen_max_len: int = 50
 
 
 @dataclass 
 class MutatorHelixConfig(ModelConfig):
-    model_name: str = "mutator_helix_mrna"
+    model_name: str = "helix"
     model_path: str = "" #TODO
     tokenizer_path: str = "" #TODO
     mutation_length: int = 5
@@ -82,13 +82,13 @@ class FitnessBioEnsembleConfig(ModelConfig): #TODO:create one for utr and one fo
 
 @dataclass
 class FitnessUTREnsembleConfig(FitnessBioEnsembleConfig): #TODO:create one for utr and one for tfbind and use the same model type
-    model_name: str = "fitness_utr_ensemble"
+    model_name: str = "ensemble"
     model_path: str = os.path.join("src", "openelm", "environments", "bioseq", "utr_fitness_function", "utr_scoring_ensemble", "scoring_models")
     gen_max_len: int = 50 # Length of the sequence to be evaluated
 
 @dataclass
 class FitnessTFBind10EnsembletConfig(FitnessBioEnsembleConfig): #TODO:create one for utr and one for tfbind and use the same model type
-    model_name: str = "fitness_TFBind10_ensemble"
+    model_name: str = "ensemble"
     model_path: str = os.path.join("src", "openelm", "environments", "bioseq", "tfbind_fitness_function", "tfbind_scoring_ensemble", "scoring_models", "2025-05-21_15-24-34") #TODO: without the date
     gen_max_len: int = 10 # Length of the sequence to be evaluated
     batch_size: int = 128
@@ -97,7 +97,7 @@ class FitnessTFBind10EnsembletConfig(FitnessBioEnsembleConfig): #TODO:create one
 @dataclass
 class FitnessHelixMRNAConfig(ModelConfig):
     model_type: str = "helix_mrna"
-    model_name: str = "fitness_helix_mrna"
+    model_name: str = "helix"
     model_path: str = os.path.join(bioseq_base_dir, "logs", "helix_mrna_fine_tune", "exp_2025-05-12_16-25-14", "model")
     batch_size: int = 128
     gen_max_len: int = 50
@@ -105,10 +105,10 @@ class FitnessHelixMRNAConfig(ModelConfig):
 @dataclass
 class QDConfig(BaseConfig):
     init_steps: int = 1 
-    total_steps: int =  50000  #100000
+    total_steps: int =  35000 
     history_length: int = 1
     save_history: bool = False
-    save_snapshot_interval: int = 2000
+    save_snapshot_interval: int = 1000
     log_snapshot_dir: str = ""
     seed: Optional[int] = 42
     save_np_rng_state: bool = False
@@ -168,7 +168,6 @@ class QDBioEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this will b
     size_of_refs_collection: int =  16384 # Number of reference sequences to use for novelty evaluation and BD
     bd_type: str = "freq" #"freq": The phenotype is a vector of frequencies of the letters A, C, G (U can be inferred). "similarity_based": The phenotype is a vector of the similarity of the sequence to the offline ref data.
     normalize_bd: bool = True  # Whether to normalize the behavior descriptor according the offline data min-max
-    initial_population_sample_seed: int = 123  # initial population sample seed
     distance_normalization_constant: float = MISSING  # Constant for distance normalization (for the similarity-based BD). -1 means constant will be automatically calculated from the offline data.
     task: str = MISSING # 'UTR-ResNet-v0-CUSTOM' or 'TFBind10-Exact-v1'
     retrain_fitness_model: bool = False # Whether to retrain the fitness model with the offline data
@@ -208,7 +207,7 @@ class QDBioUTREnvConfig(QDBioEnvConfig):
 defaults_elm = [
     {"qd": "cvtmapelites"},
     {"env": "qd_bio_utr"},
-    {"mutation_model": "random"}, # can be "random" or "mutator_helix_mrna"
+    {"mutation_model": "mutator_helix"}, # can be "random" or "mutator_helix"
     {"fitness_model": "fitness_utr_ensemble"}, # can be "fitness_helix_mrna" or "fitness_utr_ensemble" or "fitness_TFBind10_ensemble"
     "_self_",
 ]
@@ -276,8 +275,8 @@ class OneShotBioELMConfig(ELMConfig):
         oracle_model_path= os.path.join("design-bench-detached", "design_bench_data", "utr", "oracle_data", "original_v0_minmax_orig"), 
         bd_type="freq",
         normalize_bd=True,
+        seed=42,
         distance_normalization_constant=14.3378899,
-        initial_population_sample_seed=123,
         task='UTR-ResNet-v0-CUSTOM',
         retrain_fitness_model=False 
     ))
@@ -308,7 +307,7 @@ class OneShotSimilarityBDELMConfig(OneShotBioELMConfig):
         bd_type="similarity_based",
         normalize_bd=True,
         distance_normalization_constant=14.3378899,
-        initial_population_sample_seed=123,
+        seed=42,
         task='UTR-ResNet-v0-CUSTOM',
         retrain_fitness_model= False 
     ))
@@ -325,7 +324,7 @@ def register_configstore() -> ConfigStore:
     cs.store(group="qd", name="mapelites", node=MAPElitesConfig)
     cs.store(group="qd", name="cvtmapelites", node=CVTMAPElitesConfig)
     cs.store(group="mutation_model", name="random", node=BioRandomModelConfig)
-    cs.store(group="mutation_model", name="mutator_helix_mrna", node=MutatorHelixConfig)
+    cs.store(group="mutation_model", name="mutator_helix", node=MutatorHelixConfig)
     cs.store(group="fitness_model", name="fitness_utr_ensemble", node=FitnessUTREnsembleConfig)
     cs.store(group="fitness_model", name="fitness_TFBind10_ensemble", node=FitnessTFBind10EnsembletConfig)
     cs.store(group="fitness_model", name="fitness_helix_mrna", node=FitnessHelixMRNAConfig)

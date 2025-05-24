@@ -34,7 +34,7 @@ def cast_mutation_model(cfg: Any):
     if isinstance(cfg, dict):
         if cfg.get("model_name") == "random" or cfg.get("model_name") == "bio_random":
             return BioRandomModelConfig(**cfg)
-        elif cfg.get("model_name") == "mutator_helix_mrna":
+        elif cfg.get("model_name") == "mutator_helix_mrna" or cfg.get("model_name") == "helix":
             return MutatorHelixConfig(**cfg)
     raise ValueError("Unknown mutation_model config")
 
