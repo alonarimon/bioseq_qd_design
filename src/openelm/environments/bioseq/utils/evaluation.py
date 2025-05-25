@@ -257,18 +257,38 @@ if __name__ == '__main__':
     bioseq_base_dir = Path(__file__).resolve().parents[5]
  
     dirs = [
-        '25-05-22_08-47',
-        '25-05-22_08-50',
-        '25-05-22_08-51',
-        '25-05-22_08-53',
-            ]
-
+        'logs/elm/25-05-24_14-22',
+        'logs/elm/25-05-24_14-28',
+        'logs/elm/25-05-24_16-02',
+        'logs/elm/25-05-24_16-28',
+        'logs/elm/25-05-24_18-07',
+        'logs/elm/25-05-24_18-14',
+        'logs/elm/25-05-24_18-35',
+        'logs/elm/25-05-24_18-49',
+        'logs/elm/25-05-24_20-22',
+        'logs/elm/25-05-24_20-48',
+        'logs/elm/25-05-24_22-24',
+        'logs/elm/25-05-24_22-33',
+        'logs/elm/25-05-24_23-02',
+        'logs/elm/25-05-24_23-11',
+        'logs/elm/25-05-25_00-21',
+        'logs/elm/25-05-25_00-47',
+        'logs/elm/25-05-25_02-25',
+        'logs/elm/25-05-25_02-36',
+        'logs/elm/25-05-25_03-04',
+        'logs/elm/25-05-25_06-45',
+        'logs/elm/25-05-25_07-22',
+      
+    ]
+    
+    # Define a mapping for the wandb naming conventions, to support old and new naming conventions
     naming_for_wandb = {
         "mutator_helix_mrna": "helix",
         "fitness_helix_mrna": "helix",
         "helix": "helix",
         "random": "random",
         "bio_random": "random",
+        "ensemble": "ensemble",
         "fitness_bio_ensemble": "ensemble",
         "fitness_utr_ensemble": "ensemble",
         "utr_ensemble": "ensemble",
@@ -277,14 +297,14 @@ if __name__ == '__main__':
     }
 
     for dir in dirs:
-        exp_logs_dir = os.path.join(bioseq_base_dir, "logs", "elm", dir)
+        exp_logs_dir = os.path.join(bioseq_base_dir, dir)
         config_file = os.path.join(exp_logs_dir, ".hydra", "config.yaml")
         config_hydra = OmegaConf.load(config_file)
         config_dict = OmegaConf.to_container(config_hydra, resolve=True)
         elm_original_config = cast_elm_config(config_dict)
 
       
-        run_group = f"{elm_original_config.wandb_group}_{elm_original_config.env.task}"
+        run_group = f"{elm_original_config.wandb_group}_{elm_original_config.env.task}_evaluation"
         run_name = f"BD {naming_for_wandb[elm_original_config.env.bd_type]} FITNESS {naming_for_wandb[elm_original_config.fitness_model.model_name]} MUTATOR {naming_for_wandb[elm_original_config.mutation_model.model_name]}"
         wandb.init(
             project="bioseq_qd_design",
@@ -308,16 +328,16 @@ if __name__ == '__main__':
         fitness_history_pkl_file = os.path.join(exp_logs_dir, all_steps_dirs[-1], "MAPElites_fitness_history.pkl")
         fitness_history = pickle.load(open(fitness_history_pkl_file, "rb"))
     
-        # log the fitness history
-        for i in range(len(fitness_history['max'])):
-            wandb.log({
-                "fitness max": fitness_history['max'][i],
-                "fitness mean": fitness_history['mean'][i],
-                "fitness min": fitness_history['min'][i],
-                "qd score": fitness_history['qd_score'][i],
-                "niches filled": fitness_history['niches_filled'][i],
-                "step": i
-            })
+        # log the fitness history -  uncomment if needed
+        # for i in range(len(fitness_history['max'])):
+        #     wandb.log({
+        #         "fitness max": fitness_history['max'][i],
+        #         "fitness mean": fitness_history['mean'][i],
+        #         "fitness min": fitness_history['min'][i],
+        #         "qd score": fitness_history['qd_score'][i],
+        #         "niches filled": fitness_history['niches_filled'][i],
+        #         "step": i
+        #     })
 
         # load oracle model
         ORACLE_NAME = "original_v0_minmax_orig"
@@ -330,7 +350,7 @@ if __name__ == '__main__':
             outputs=model.get_layer('reshape').output  # layer 21
         )
         offline_data_path = DATASET_PATH / "oracle_data" / ORACLE_NAME / "sampled_offline_relabeled_data" / "sampled_data_fraction_1_3_seed_42"
-        ref_list = loaf_ref_list(os.path.join(offline_data_path, "x.npy"), 16384, seed=42)
+        ref_list = loaf_ref_list(os.path.join(offline_data_path, "x.npy"), 16384, seed=elm_original_config.env.seed)
         full_data_y_path = DATASET_PATH / "oracle_data" / ORACLE_NAME / "relabelled_y.npy"
         full_data_y = np.load(full_data_y_path)
         max_score = np.max(full_data_y)
@@ -352,8 +372,9 @@ if __name__ == '__main__':
             print(f"Number of non-zero genomes: {len(non_zero_genoms)}")
             
             save_dir = os.path.join(step_dir_path, "oracle_nonrmalised_post_evaluation")
-
-            downsampled_genoms = downsample_solutions(genomes=non_zero_genoms, k=128, save_dir=save_dir, original_config=elm_original_config)
+            
+            k = np.min([128, len(non_zero_genoms)])  # downsample to k=128 or less if not enough genomes
+            downsampled_genoms = downsample_solutions(genomes=non_zero_genoms, k=k, save_dir=save_dir, original_config=elm_original_config)
             logging.info(f"Evaluating {len(non_zero_genoms)} genomes and {len(downsampled_genoms)} down-sampled genomes against the oracle and reference set.")
 
             results = evaluate_solutions_set(oracle=oracle,
@@ -362,7 +383,7 @@ if __name__ == '__main__':
                                     downsampled_solutions=downsampled_genoms,
                                     min_score=min_score,
                                     max_score=max_score,
-                                k=128, plot=False, save_path=save_dir)
+                                    k=k, plot=True, save_path=save_dir)
             step = int(step_dir.split("_")[1])
-            wandb.log({"step": step, "results": results})
+            wandb.log({"step": step, "results": results, "k": k})
         wandb.finish()
