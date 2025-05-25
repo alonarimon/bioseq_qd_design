@@ -24,7 +24,7 @@ def run_elm():
     for name, conf_name in CONFIGS_TO_TEST.items():
         timestamp = datetime.now().strftime("%y-%m-%d_%H-%M")
         output_dir = os.path.join(
-            project_root, "logs", "elm", f"test_{name}", timestamp
+            project_root, "logs", f"test_{name}", timestamp
         )
         command = [
             sys.executable, run_elm_path,
@@ -99,8 +99,8 @@ def test_oneshot():
 
     # Set fixed reference file paths (adjust if needed)
     reference_paths = {
-        "oneshot_bio_bd": os.path.join(project_root, "logs", "elm", f"test_oneshot_bio_bd", '25-05-24_13-43', "oracle_evaluations"),
-        "oneshot_similarity_bd": os.path.join(project_root, "logs", "elm", f"test_oneshot_similarity_bd", '25-05-24_13-44', "oracle_evaluations"),
+        "oneshot_bio_bd": os.path.join(project_root, "logs", f"test_oneshot_bio_bd", '25-05-24_13-43', "oracle_evaluations"),
+        "oneshot_similarity_bd": os.path.join(project_root, "logs", f"test_oneshot_similarity_bd", '25-05-24_13-44', "oracle_evaluations"),
     }
 
     for config_name in CONFIGS_TO_TEST.keys():
