@@ -19,7 +19,7 @@ From: nvidia/cuda:12.5.1-cudnn-devel-ubuntu22.04
     export CUDA_HOME="/usr/local/cuda"
     export PATH="$CUDA_HOME/bin:$PATH"
     export LD_LIBRARY_PATH="$CUDA_HOME/lib64:$LD_LIBRARY_PATH"
-    export CUDA_VISIBLE_DEVICES=2
+    # export CUDA_VISIBLE_DEVICES=2 # TODO: for 10.0.5.119 machine only
 
 %post
     commit="{{ commit }}"

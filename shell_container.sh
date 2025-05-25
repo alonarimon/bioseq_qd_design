@@ -26,7 +26,8 @@ done
 # Shell into the container
 apptainer shell \
 	--bind $(pwd):/workdir/ \
-	--env WANDB_API_KEY="${WANDB_API_KEY}" \
+	--env WANDB_API_KEY="${WANDB_API_KEY}"\
+	--env CUDA_VISIBLE_DEVICES="2" \
 	--cleanenv \
 	--containall \
 	--home /tmp/ \
@@ -36,3 +37,4 @@ apptainer shell \
 	--workdir apptainer/ \
 	$writable_flag \
 	apptainer/container.sif
+
