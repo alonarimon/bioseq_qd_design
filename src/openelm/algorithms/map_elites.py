@@ -224,7 +224,8 @@ class MAPElitesBase:
         # bad mutations that ended up with invalid output.
         self.recycled = [None] * 1000
         self.recycled_count = 0
-
+        if data_to_init is None and config.init_from_offline_data:
+            data_to_init = self.env.offline_data_x_gen
         self._init_discretization(data_to_init)
         self._init_maps(init_map, self.config.log_snapshot_dir)
         print(f"MAP of size: {self.fitnesses.dims} = {self.fitnesses.map_size}")
@@ -564,6 +565,19 @@ class MAPElitesBase:
         with open(fitness_history_file, "wb") as f:
             pickle.dump(self.fitness_history, f)
         artifact.add_file(str(fitness_history_file))
+        
+        if self.config.eval_with_oracle:
+            solutions = self.genomes.array[self.nonzero.array]
+            sequences = np.array([genotype.sequence for genotype in solutions])
+            oracle_scores = self.env.oracle.predict(sequences)
+            oracle_scores = (oracle_scores - self.env.min_output) / (self.env.max_output - self.env.min_output) # normalize the scores
+            wandb.log({f"{self.name} oracle max score": oracle_scores.max(),
+                        f"{self.name} oracle min score": oracle_scores.min(),
+                        f"{self.name} oracle mean score": oracle_scores.mean(),
+                        "step": step,})
+            with open(output_folder / f"{self.name}_oracle_scores.pkl", "wb") as f:
+                pickle.dump(oracle_scores, f)
+            artifact.add_file(str(output_folder / f"{self.name}_oracle_scores.pkl"))
 
         # save numpy rng state to load if resuming from deterministic snapshot
         if self.save_np_rng_state:

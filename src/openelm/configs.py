@@ -108,7 +108,7 @@ class QDConfig(BaseConfig):
     total_steps: int =  35000 
     history_length: int = 1
     save_history: bool = False
-    save_snapshot_interval: int = 1000
+    save_snapshot_interval: int = 100
     log_snapshot_dir: str = ""
     seed: Optional[int] = 42
     save_np_rng_state: bool = False
@@ -130,6 +130,7 @@ class CVTMAPElitesConfig(QDConfig):
     qd_name: str = "cvtmapelites"
     n_niches: int = 2000
     cvt_samples: int = 10000
+    init_from_offline_data: bool = True  # Whether to initialize the map from offline data
 
 
 @dataclass
