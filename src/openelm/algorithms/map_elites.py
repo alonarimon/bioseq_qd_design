@@ -424,8 +424,26 @@ class MAPElitesBase:
             if (
                     self.save_snapshot_interval is not None
                     and n_steps % self.save_snapshot_interval == 0
-            ):
-                self.save_results(step=n_steps)
+            ):  
+                if self.config.save_logs_localy:
+                    self.save_results(step=n_steps)
+                if self.config.eval_with_oracle:
+                    solutions = self.genomes.array[self.nonzero.array]
+                    sequences = np.array([genotype.sequence for genotype in solutions])
+                    oracle_scores = self.env.oracle.predict(sequences)
+                    oracle_scores = (oracle_scores - self.env.min_output) / (self.env.max_output - self.env.min_output) # normalize the scores
+                    wandb.log({f"{self.name} oracle max score": oracle_scores.max(),
+                                f"{self.name} oracle min score": oracle_scores.min(),
+                                f"{self.name} oracle mean score": oracle_scores.mean(),
+                                "step": n_steps,})
+                    if self.config.save_logs_localy:
+                        artifact = wandb.Artifact(f"{self.name}_oracle_scores_step_{n_steps}", type="oracle_scores")
+                        output_folder = Path(self.config.output_dir) / f"step_{n_steps}"
+                        with open(output_folder / f"{self.name}_oracle_scores.pkl", "wb") as f:
+                            pickle.dump(oracle_scores, f)
+                        artifact.add_file(str(output_folder / f"{self.name}_oracle_scores.pkl"))
+                if self.config.visualize_on_interval:
+                    self.visualize(save_dir=output_folder)
 
         # save and visualize the final results
         self.current_max_genome = max_genome
@@ -565,19 +583,6 @@ class MAPElitesBase:
         with open(fitness_history_file, "wb") as f:
             pickle.dump(self.fitness_history, f)
         artifact.add_file(str(fitness_history_file))
-        
-        if self.config.eval_with_oracle:
-            solutions = self.genomes.array[self.nonzero.array]
-            sequences = np.array([genotype.sequence for genotype in solutions])
-            oracle_scores = self.env.oracle.predict(sequences)
-            oracle_scores = (oracle_scores - self.env.min_output) / (self.env.max_output - self.env.min_output) # normalize the scores
-            wandb.log({f"{self.name} oracle max score": oracle_scores.max(),
-                        f"{self.name} oracle min score": oracle_scores.min(),
-                        f"{self.name} oracle mean score": oracle_scores.mean(),
-                        "step": step,})
-            with open(output_folder / f"{self.name}_oracle_scores.pkl", "wb") as f:
-                pickle.dump(oracle_scores, f)
-            artifact.add_file(str(output_folder / f"{self.name}_oracle_scores.pkl"))
 
         # save numpy rng state to load if resuming from deterministic snapshot
         if self.save_np_rng_state:
@@ -600,8 +605,7 @@ class MAPElitesBase:
         f.close()
 
         wandb.log_artifact(artifact)
-        if self.config.visualize_on_interval:
-            self.visualize(save_dir=output_folder)
+        
 
     def plot_fitness(self):
         import matplotlib.pyplot as plt
@@ -681,7 +685,8 @@ class MAPElitesBase:
                 pass
         save_path: str = self.config.output_dir
         wandb.log({f"{self.name}_individuals": wandb.Image(plt)})
-        plt.savefig(f"{save_path}/MAPElites_individuals.png")
+        if self.config.save_logs_localy:
+            plt.savefig(f"{save_path}/MAPElites_individuals.png")
 
     def _downsample_map_elites(self, new_num_cells: int):
         """
@@ -816,8 +821,8 @@ class CVTMAPElites(MAPElitesBase):
         """
         if save_dir=="":
             save_dir = self.config.output_dir
-
-        self.plot_fitness()
+        if self.config.save_logs_localy:
+            self.plot_fitness()
         # plot behaviour space with fitness scores
         fitness_scores = self.fitnesses.array[self.nonzero.array]
         self.plot_behaviour_space(fitness_scores, title="CVT-MAPElites Behaviour Space with Surrogate Scores", save_dir=save_dir)
@@ -941,7 +946,8 @@ class CVTMAPElites(MAPElitesBase):
             plt.ylim([0, self.env.behavior_space[1, 1]])
             plt.title(title)
             wandb.log({f"{self.name}_{title}_2D": wandb.Image(plt)})
-            plt.savefig(f"{save_dir}/{title}_2D.png")
+            if self.config.save_logs_localy:
+                plt.savefig(f"{save_dir}/{title}_2D.png")
             plt.close()
         
         if self.env.behavior_ndim >= 3:
@@ -983,7 +989,8 @@ class CVTMAPElites(MAPElitesBase):
             ax.set_zlim([0, self.env.behavior_space[1, 2]])
             ax.set_title(title)
             wandb.log({f"{self.name}_{title}_3D": wandb.Image(plt)})
-            plt.savefig(f"{save_dir}/{title}_3D.png")
+            if self.config.save_logs_localy:
+                plt.savefig(f"{save_dir}/{title}_3D.png")
             plt.close()
 
         else:
