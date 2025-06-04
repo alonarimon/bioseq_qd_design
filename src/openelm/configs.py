@@ -116,6 +116,7 @@ class QDConfig(BaseConfig):
     crossover: bool = False
     crossover_parents: int = 2
     eval_with_oracle: bool = True
+    visualize_on_interval: bool = False  # Whether to visualize the QD archive on a regular interval
     number_of_final_solutions: int = 128
 
 

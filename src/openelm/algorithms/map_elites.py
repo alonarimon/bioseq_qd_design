@@ -600,6 +600,8 @@ class MAPElitesBase:
         f.close()
 
         wandb.log_artifact(artifact)
+        if self.config.visualize_on_interval:
+            self.visualize(save_dir=output_folder)
 
     def plot_fitness(self):
         import matplotlib.pyplot as plt
@@ -739,7 +741,7 @@ class MAPElites(MAPElitesBase):
             else tuple(np.digitize(x, bins) for x, bins in zip(b, self.bins))
         )
 
-    def visualize(self):
+    def visualize(self, save_dir=""):
         """Visualize the map."""
         self.plot_fitness()
 
@@ -808,10 +810,23 @@ class CVTMAPElites(MAPElitesBase):
             else (np.argmin(np.linalg.norm(b - self.centroids, axis=1)),)
         )
 
-    def visualize(self):
-        """Visualize the map."""
+    def visualize(self, save_dir=""):
+        """
+        Visualize the map.
+        """
+        if save_dir=="":
+            save_dir = self.config.output_dir
+
         self.plot_fitness()
-        self.plot_behaviour_space()
+        # plot behaviour space with fitness scores
+        fitness_scores = self.fitnesses.array[self.nonzero.array]
+        self.plot_behaviour_space(fitness_scores, title="CVT-MAPElites Behaviour Space with Surrogate Scores", save_dir=save_dir)
+        if self.config.eval_with_oracle:
+            # plot behaviour space with oracle scores
+            oracle_scores = self.env.oracle.predict(
+                np.array([genotype.sequence for genotype in self.genomes.array[self.nonzero.array]])
+            ) #TODO:already calculated
+            self.plot_behaviour_space(oracle_scores, title="CVT-MAPElites Behaviour Space with Oracle Scores", save_dir=save_dir)
 
     def plot_centroids(self, points, k_means):
         """
@@ -877,103 +892,105 @@ class CVTMAPElites(MAPElitesBase):
         os.makedirs(save_path, exist_ok=True)
         plt.savefig(f"{save_path}/MAPElites_centroids.png")
 
-    def plot_behaviour_space(self):
-        """Plot the first two dimensions (or three if available) of the behaviour space, along with the CVT centroids."""
+    def plot_behaviour_space(self, scores, title="Behaviour space", save_dir=""):
+        """
+        Plot the behaviour space history of the MAP-Elites algorithm.
+        Args:
+            scores (List[float] or np.ndarray): Score for each non-zero genome.
+            title (str): Title of the plot, indicating what the scores represent.
+        """
+
         import matplotlib.pyplot as plt
 
-        if self.env.behavior_ndim == 2:
+        assert len(scores) == len(self.genomes.array[self.nonzero.array]), \
+        "Length of scores must match number of non-zero genomes"
+
+        if self.env.behavior_ndim >= 2:
             plt.figure()
             for i in range(self.centroids.shape[0]):
-                color = plt.cm.tab10(i % 10)
                 plt.scatter(
                     self.centroids[i, 0],
                     self.centroids[i, 1],
                     s=20,
                     marker="x",
-                    c=[[0.5, 0.5, 0.5, 0.2]],
-                    label=f"Niche {i}",
+                    c=[[0.5, 0.5, 0.5, 0.2]],  # light gray
                 )
 
-                # get the first two dimensions for each behaviour in the history
-                if self.genomes.history_length > 1:
-                    phenotypes = [
-                        self.env.to_phenotype(g)[:2]
-                        for g in self.genomes.array[:, i]
-                        if hasattr(g, "to_phenotype")
-                    ]
-                    if phenotypes:
-                        hist = np.stack(phenotypes)
-                        plt.scatter(
-                            hist[:, 0], hist[:, 1], s=10, marker=".", color=color
-                        )
-                else:
-                    g = self.genomes.array[i]
-                    if isinstance(g, Genotype):                        plt.scatter(
-                        self.env.to_phenotype(g)[0],
-                        self.env.to_phenotype(g)[1],
-                        s=10,
-                        marker=".",
-                        color=color,
-                    )
+            # Gather phenotype coordinates and corresponding scores
+            phenotype_coords = []
+            color_scores = []
+            for g, score in zip(self.genomes.array, scores):
+                if g is not None and isinstance(g, Genotype):
+                    phenotype = self.env.to_phenotype(g)
+                    phenotype_coords.append(phenotype[:2])
+                    color_scores.append(score)
+
+            if phenotype_coords:
+                phenotype_coords = np.array(phenotype_coords)
+                sc = plt.scatter(
+                    phenotype_coords[:, 0],
+                    phenotype_coords[:, 1],
+                    c=color_scores,
+                    cmap="viridis",
+                    s=20,
+                    marker=".",
+                )
+                plt.colorbar(sc, label="Score")
 
             plt.xlim([0, self.env.behavior_space[1, 0]])
             plt.ylim([0, self.env.behavior_space[1, 1]])
-
-        elif self.env.behavior_ndim >= 3:
-            plt.figure()
-            ax = plt.axes(projection="3d")
-
+            plt.title(title)
+            wandb.log({f"{self.name}_{title}_2D": wandb.Image(plt)})
+            plt.savefig(f"{save_dir}/{title}_2D.png")
+            plt.close()
+        
+        if self.env.behavior_ndim >= 3:
+            fig = plt.figure()
+            ax = fig.add_subplot(projection="3d")
             for i in range(self.centroids.shape[0]):
-                color = plt.cm.tab10(i % 10)
                 ax.scatter(
                     self.centroids[i, 0],
                     self.centroids[i, 1],
                     self.centroids[i, 2],
                     s=20,
                     marker="x",
-                    c=[[0.5, 0.5, 0.5, 0.2]],  # light gray with alpha,
-                    label=f"Niche {i}",
+                    c=[[0.5, 0.5, 0.5, 0.2]],
                 )
 
-                # get the first three dimensions for each behaviour in the history
-                if self.genomes.history_length > 1:
-                    phenotypes = [
-                        self.env.to_phenotype(g)[:3]
-                        for g in self.genomes.array[:, i]
-                        if isinstance(g, Genotype)
-                    ]
-                    if phenotypes:
-                        hist = np.stack(phenotypes)
-                        ax.scatter(
-                            hist[:, 0],
-                            hist[:, 1],
-                            hist[:, 2],
-                            s=10,
-                            marker=".",
-                            c=[color],
-                        )
-                else:
-                    g = self.genomes.array[i]
-                    if isinstance(g, Genotype):
-                        ax.scatter(
-                            self.env.to_phenotype(g)[0],
-                            self.env.to_phenotype(g)[1],
-                            self.env.to_phenotype(g)[2],
-                            s=10,
-                            marker=".",
-                            c=[color],
-                        )
+            phenotype_coords = []
+            color_scores = []
+            for g, score in zip(self.genomes.array, scores):
+                if g is not None and isinstance(g, Genotype):
+                    phenotype = self.env.to_phenotype(g)
+                    phenotype_coords.append(phenotype[:3])
+                    color_scores.append(score)
+
+            if phenotype_coords:
+                phenotype_coords = np.array(phenotype_coords)
+                sc = ax.scatter(
+                    phenotype_coords[:, 0],
+                    phenotype_coords[:, 1],
+                    phenotype_coords[:, 2],
+                    c=color_scores,
+                    cmap="viridis",
+                    s=20,
+                    marker=".",
+                )
+                fig.colorbar(sc, ax=ax, label="Score")
 
             ax.set_xlim([0, self.env.behavior_space[1, 0]])
             ax.set_ylim([0, self.env.behavior_space[1, 1]])
             ax.set_zlim([0, self.env.behavior_space[1, 2]])
+            ax.set_title(title)
+            wandb.log({f"{self.name}_{title}_3D": wandb.Image(plt)})
+            plt.savefig(f"{save_dir}/{title}_3D.png")
+            plt.close()
 
         else:
             print("Not enough dimensions to plot behaviour space history")
             return
-        wandb.log({f"{self.name}_behaviour_history": wandb.Image(plt)})
-        save_path: str = self.config.output_dir
-        plt.savefig(f"{save_path}/MAPElites_behaviour_history.png")
+
+        
 
     def _downsample_map_elites(self, new_num_cells: int) -> MAPElitesBase:
         """
