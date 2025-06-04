@@ -254,31 +254,37 @@ if __name__ == '__main__':
     # Example debug usage
     # load maps from pkl file
 
+    ONLY_LAST_STEP = True  # Set to True to evaluate only the last step
+
     bioseq_base_dir = Path(__file__).resolve().parents[5]
  
-    dirs = [
-        'logs/elm/25-05-24_14-22',
-        'logs/elm/25-05-24_14-28',
-        'logs/elm/25-05-24_16-02',
-        'logs/elm/25-05-24_16-28',
-        'logs/elm/25-05-24_18-07',
-        'logs/elm/25-05-24_18-14',
-        'logs/elm/25-05-24_18-35',
-        'logs/elm/25-05-24_18-49',
-        'logs/elm/25-05-24_20-22',
-        'logs/elm/25-05-24_20-48',
-        'logs/elm/25-05-24_22-24',
-        'logs/elm/25-05-24_22-33',
-        'logs/elm/25-05-24_23-02',
-        'logs/elm/25-05-24_23-11',
-        'logs/elm/25-05-25_00-21',
-        'logs/elm/25-05-25_00-47',
-        'logs/elm/25-05-25_02-25',
-        'logs/elm/25-05-25_02-36',
-        'logs/elm/25-05-25_03-04',
-        'logs/elm/25-05-25_06-45',
-        'logs/elm/25-05-25_07-22',
-      
+    dirs= [
+        'logs/elm/25-05-31_21-08',
+        'logs/elm/25-05-31_22-17',
+        'logs/elm/25-05-31_23-06',
+        'logs/elm/25-05-31_23-14',
+        'logs/elm/25-05-31_23-39',
+        'logs/elm/25-06-01_01-13',
+        'logs/elm/25-06-01_01-46',
+        'logs/elm/25-06-01_01-52',
+        'logs/elm/25-06-01_02-50',
+        'logs/elm/25-06-01_04-06',
+        'logs/elm/25-06-01_04-50',
+        'logs/elm/25-06-01_05-03',
+        'logs/elm/25-06-01_05-23',
+        'logs/elm/25-06-01_07-05',
+        'logs/elm/25-06-01_07-38',
+        'logs/elm/25-06-01_08-37',
+        'logs/elm/25-06-01_10-00',
+        'logs/elm/25-06-01_10-38',
+        'logs/elm/25-06-01_11-10',
+        'logs/elm/25-06-01_12-52',
+        'logs/elm/25-06-01_13-45',
+        'logs/elm/25-06-01_15-05',
+        'logs/elm/25-06-01_15-37',
+        'logs/elm/25-06-01_17-19',
+        'logs/elm/25-06-01_18-12',
+
     ]
     
     # Define a mapping for the wandb naming conventions, to support old and new naming conventions
@@ -358,7 +364,8 @@ if __name__ == '__main__':
         logger.info(f"offline data max score: {max_score}, min score: {min_score}")
         ref_genotypes = [RNAGenotype(seq) for seq in ref_list]
         
-        
+        if ONLY_LAST_STEP:
+            all_steps_dirs = [all_steps_dirs[-1]]
         for step_dir in all_steps_dirs:
             print(f"Evaluating step: {step_dir}")
             # load the maps pkl file
@@ -383,7 +390,7 @@ if __name__ == '__main__':
                                     downsampled_solutions=downsampled_genoms,
                                     min_score=min_score,
                                     max_score=max_score,
-                                    k=k, plot=True, save_path=save_dir)
+                                    k=k, plot=False, save_path=save_dir)
             step = int(step_dir.split("_")[1])
             wandb.log({"step": step, "results": results, "k": k})
         wandb.finish()
