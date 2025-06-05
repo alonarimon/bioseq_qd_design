@@ -1,68 +1,112 @@
-[![DOI](https://zenodo.org/badge/532259603.svg)](https://zenodo.org/badge/latestdoi/532259603)
-# OpenELM
+# Offline Model-Based Optimisation for Controllable Biological Sequence Design
 
-OpenELM is an open-source library by CarperAI, designed to enable evolutionary search with language models in both code and natural language.
+This repository implements a framework for de novo biological sequence design using offline model-based optimisation (MBO) combined with quality-diversity (QD) algorithms and foundation models. It extends the MAP-Elites algorithm to work in a one-shot, offline setting—where access to the true objective function (oracle) is restricted—and integrates pretrained sequence models to improve both generation and evaluation.
 
-The OpenELM project has the following goals:
-1. Release an open-source version of ELM with its associated diff models.
-2. Integrate with both open-source language models (run locally or on Colab) and with closed models via paid APIs, such as the OpenAI API.
-We want to support users with many different compute profiles!
-3. Provide a simple interface to a range of example environments for evolutionary search, to let users adapt these easily for their domain.
-4. Demonstrate the potential of evolution with LLMs.
+This work was developed as part of the MSc Individual Project at Imperial College London.
 
-**<ins>For QDAIF</ins>:** poetry domain currently implemented in main, and other experiment code with few-shot [LMX](https://arxiv.org/abs/2302.12170) domains currently in [experimental branch](https://github.com/CarperAI/OpenELM/tree/qdaif-lmx-expt)
+> This repository is a fork of OpenELM (https://github.com/CarperAI/OpenELM) , an open-source library by CarperAI released under the MIT License. We adapted their Quality-Diversity framework to biological sequence design, and significantly extended the mutation, scoring, and descriptor logic for the offline setting.
 
-# Install
-`pip install openelm`
 
-To use the sodarace environment, you must first `pip install swig`.
+## Report
 
-Then:
+A detailed description of the motivation, methodology, experiments, and results can be found in the [project report](./Project_Report.pdf).
 
-`pip install openelm[sodaracer]`
+## Project Overview
 
-See the pyproject.toml for further install options.
+### Motivation
 
-# Features
+Biological sequence design is a critical task in synthetic biology, drug discovery, and mRNA therapeutics. Due to the cost and time required for wet-lab experiments, in-silico optimisation methods are used to pre-select candidate sequences. However, designing biologically plausible, diverse, and high-performing sequences under offline constraints is challenging.
 
-### LLM integration with evolutionary algorithms
-OpenELM supports the quality-diversity algorithms MAP-Elites, CVT-MAP-Elites, and Deep Grid MAP-Elites, as well as a simple genetic algorithm baseline.
+This project explores the use of:
+- **Offline MBO**: surrogate-based optimisation using only a static dataset of labeled sequences.
+- **Quality-Diversity algorithms (MAP-Elites)**: to generate diverse and useful sequences across a defined behaviour space.
+- **Foundation models (e.g., Helix-mRNA)**: for both generative mutation and conservative surrogate scoring.
 
-### Evolutionary operators
-OpenELM supports:
-1. Prompt-based mutation with instruct models
-2. Diff models (specialised for code)
-3. Crossover with language models
+### Key Components
+- **Task**: Optimisation of 5'UTR mRNA sequences for high ribosome load.
+- **Surrogates**: Conservative Objective Models (COMs) and fine-tuned Helix-mRNA.
+- **Mutators**: Random and Helix-mRNA-based substring replacement.
+- **Descriptors**: Nucleotide frequency-based behaviour space.
+- **Final Batch**: Downsampled using Centroidal Voronoi Tessellation (CVT) to 128 diverse high-fitness candidates.
 
-### LLM support, efficiency, and safety
-OpenELM’s language models are instantiated as Langchain classes by default, which means that OpenELM can support practically any existing LLM API, as well as models run on your local GPU via HuggingFace Transformers.
+### Highlights
+- Demonstrated how Helix-guided mutation avoids surrogate exploitation.
+- Compared mutation-surrogate pairings in terms of fitness, diversity, and novelty.
+- Proposed and analysed biologically meaningful distance metrics (e.g., structural edit distance).
 
-We also provide optional Nvidia Triton Inference Server support, intended for use cases where low latency on 8 or more GPUs is important. Finally, for code generation domains, we provide a sandbox environment, consisting of a container server backed with gVisor (a container runtime that introduces an additional barrier between the host and the container) as well as a heuristic-based safety guard.
+## Setup
 
-### Baseline environments
-1. **Sodarace.** A 2D physics-based simulation of robots moving across a variety of terrains. These robots are created by Python programs generated from an LLM.
-2. **Image Generation.** OpenELM can evolve over generated images by generating code that returns NumPy arrays containing the images. This serves as a simple test environment for code generation
-3. **Programming Puzzles.** OpenELM can be used to generate diverse solutions to programming puzzles. This environment supports co-evolution of both the problem and the solution at the same time.
-4. **Prompts.** OpenELM contains a generic environment suitable for evolving prompts for language models, customizable with Langchain templates to the desired domain.
-5. We also include a **poetry** environment, demonstrating the use of LLMs to evaluate both the quality and diversity of generated creative writing text, as described in a recent CarperAI blog post on Quality-Diversity with AI Feedback (QDAIF).
+This project runs inside an [Apptainer](https://apptainer.org/) container to ensure a consistent environment across machines.
 
-## Architecture
-Roughly, ELM consists of a pipeline of different components:
-1. The `Environment` class. This class defines the mechanics of how to initialize members of the population, mutate them with the desired operator, and how to measure the fitness (and diversity) of individuals.
-2. The `MAPElites` class. This class describes how the evolutionary algorithm works, and can be viewed as a wrapper around the environment defining the selection algorithm for generated individuals.
-3. The `MutationModel` class, which is responsible for running the LLM to actually generate new individuals. This functions as a wrapper around the LangChain API. The environment is expected to call the `MutationModel` when a new individual is needed.
-4. The `ELM` class calls the `MAPElites` algorithm class and runs the search.
+### 1. Build the Container
 
-All options for these classes are defined in `configs.py`, via dataclasses which are registered as a `hydra` config, and can be overriden via the command line when running one of the example scripts such as `run_elm.py`.
+To build the container locally, run:
 
-## Running ELM
-`python run_elm.py` will start an ELM evolutionary search using the defaults listed in `configs.py`. These can be overriden via the command line. For example, you can use `run_elm.py env=image_evolution` to run the Image Evolution environment.
+```bash
+./build_container.sh
+```
 
-## Sandbox
-To use the code execution sandbox, see the [sandboxing readme](https://github.com/CarperAI/OpenELM/blob/main/src/openelm/sandbox/README.md) for instructions to set it up in a Docker container with the gVisor runtime.
+Alternatively, if a pre-built container.sif file already exists in the ./apptainer/ directory, you can skip this step.
 
-## Triton
-We also have code available to run models in Nvidia's Triton Inference Server. See the [Triton Readme](https://github.com/CarperAI/OpenELM/blob/main/src/openelm/codegen/triton_utils/readme.md) to get started
+### 2. Use the Container
+You can interact with the container in two ways:
 
-# Contributing
-If you'd like to contribute or have questions, go to the #openelm channel on the [CarperAI discord](https://discord.gg/canadagoose)!
+* Option A: Run the container directly
+    ```bash
+    apptainer run --nv ./apptainer/container.sif
+    ```
+* Option B: Open a shell inside the container 
+    ```bash
+    ./shell_container.sh
+    ```
+    From the shell, you can run Python scripts or interactively explore the environment.
+
+## Dependencies and Acknowledgements
+
+This project builds on the following foundational works and public repositories:
+
+- **OpenELM** [[1]](https://github.com/CarperAI/OpenELM): This repository is a fork of *OpenELM* by Bradley et al., an open-source library by CarperAI released under the MIT License. We adapted their Quality-Diversity framework to the biological sequence design domain, significantly extending the mutation strategies, scoring models, and behaviour descriptor logic for offline optimisation.
+- **Design-Bench** [[1]](https://github.com/rail-berkeley/design-bench): for offline datasets and oracle models.
+- **Helical** [[3]](https://github.com/helicalAI/helical): a package providing pretrained foundation models for biological sequence design. We use the `helix` model for both generative mutation and surrogate evaluation of mRNA sequences.
+
+We thank the authors of these works for making their code and models available.
+
+### Citations
+
+[1] Bradley H., Fan H., Carvalho F., Fisher M., Castricato L., reciprocated, et al. *OpenELM*, 2023. Available at: [https://github.com/CarperAI/OpenELM](https://github.com/CarperAI/OpenELM)  
+
+[2] Trabucco, B., Geng, X., Kumar, A., & Levine, S. (2022). *Design-Bench: Benchmarks for data-driven offline model-based optimization*. ICML 2022.
+
+[3] Donà, J., Flajolet, A., Marginean, A., Cully, A., & Pierrot, T. (2023). *Quality-Diversity for One-Shot Biological Sequence Design*.
+
+[4] Wood, M., Klop, M., & Allard, M. (2025). *Helix-mRNA: A Hybrid Foundation Model for Full Sequence mRNA Therapeutics*. [arXiv:2502.13785](https://arxiv.org/abs/2502.13785)
+
+## License
+
+This repository is a fork of [OpenELM](https://github.com/CarperAI/OpenELM), which is licensed under the MIT License. The original code from OpenELM remains under the MIT License — see the [`LICENSE`](./LICENSE) file for full details.
+
+### Submodules
+
+This repository includes the following Git submodules, each with their own respective licenses:
+
+- [Design-Bench](https://github.com/rail-berkeley/design-bench) – MIT License
+- [Helical](https://github.com/helicalAI/helical) – GNU Affero General Public License v3.0
+
+These submodules are governed by their own license terms (see the `LICENSE` file inside each submodule directory).
+
+---
+
+⚠️ Original work created in this repository by Alona Rimon is **not yet licensed** for redistribution or reuse. A separate license for these additions may be added in the future.
+
+If you have questions or would like to reuse original components of this work, please [contact me](mailto:rimonalona@gmail.com).
+
+
+
+## Authors
+
+**Alona Rimon** – MSc Advanced Computing, Imperial College London  
+Supervisor: Dr. Antoine Cully  
+Second Supervisors: Maxime Allard, Hannah Janmohamed
+
+
+
