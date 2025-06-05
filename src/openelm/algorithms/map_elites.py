@@ -629,7 +629,7 @@ class MAPElitesBase:
         plt.xlabel("Iteration")
         plt.ylabel("QD score")
         plt.title("QD score history")
-        wandb.log({f"{self.name}_qd_score": wandb.Image(plt)})
+        wandb.log({f"{self.name}_qd_score_img": wandb.Image(plt)})
         plt.savefig(f"{save_path}/MAPElites_qd_score.png")
         plt.close("all")
 
@@ -639,7 +639,7 @@ class MAPElitesBase:
         plt.xlabel("Iteration")
         plt.ylabel("Niches filled")
         plt.title("Niches filled history")
-        wandb.log({f"{self.name}_niches_filled": wandb.Image(plt)})
+        wandb.log({f"{self.name}_niches_filled_img": wandb.Image(plt)})
         plt.savefig(f"{save_path}/MAPElites_niches_filled.png")
         plt.close("all")
 
