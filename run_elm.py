@@ -58,24 +58,6 @@ def setup_logging(log_file):
 )
 def main(config):
 
-    import os
-    import torch
-    import triton
-    import glob
-
-    print('=== Runtime Diagnostics ===')
-    print('CUDA_VISIBLE_DEVICES:', os.environ.get('CUDA_VISIBLE_DEVICES'))
-    print('torch.cuda.is_available():', torch.cuda.is_available())
-    if torch.cuda.is_available():
-        print('CUDA device:', torch.cuda.get_device_name(0))
-    else:
-        print('No CUDA device detected')
-
-    print('Triton version:', triton.__version__)
-    print('LD_LIBRARY_PATH:', os.environ.get('LD_LIBRARY_PATH'))
-    print('libcuda.so found at:', glob.glob('/**/libcuda.so*', recursive=True))
-    print('===========================')
-
     # Set up wandb
     config_dict = OmegaConf.to_container(config, resolve=True)
 
