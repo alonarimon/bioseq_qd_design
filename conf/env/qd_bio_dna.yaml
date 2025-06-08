@@ -1,0 +1,16 @@
+env_name: qd_bio_dna
+batch_size: 128
+debug: false
+seed: 42
+behavior_space:
+  - [0.0, 1.0]
+  - [0.0, 1.0]
+  - [0.0, 1.0]
+sequence_length: 10
+alphabet: [0, 1, 2, 3]
+size_of_refs_collection: 16384
+bd_type: freq
+normalize_bd: true
+distance_normalization_constant: -1
+task: TFBind10-Exact-v1
+retrain_fitness_model: true

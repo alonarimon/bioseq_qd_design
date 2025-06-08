@@ -1,0 +1,21 @@
+env_name: qd_bio_utr
+behavior_space:
+  - [0.0, 1.0]
+  - [0.0, 1.0]
+sequence_length: 50
+alphabet: [0, 1, 2, 3]
+size_of_refs_collection: 16384
+offline_data_dir: design-bench-detached/design_bench_data/utr/oracle_data/original_v0_minmax_orig/sampled_offline_relabeled_data/sampled_data_fraction_1_3_seed_42
+offline_data_x_file: x.npy
+offline_data_y_file: y.npy
+oracle_model_path: design-bench-detached/design_bench_data/utr/oracle_data/original_v0_minmax_orig
+oracle_max_score: 0.7381
+oracle_min_score: 0.1885
+distance_normalization_constant: 14.3378899
+task: UTR-ResNet-v0-CUSTOM
+retrain_fitness_model: false
+normalize_bd: true
+bd_type: similarity_based
+seed: 42
+bd_min: [1.70510378e-03, 2.28953166e-05] # Min values for the similarity-based BD
+bd_max: [3.16341126, 3.22913836] # Max values for the similarity-based BD

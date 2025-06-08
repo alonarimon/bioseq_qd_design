@@ -328,6 +328,7 @@ def register_configstore() -> ConfigStore:
     cs.store(group="env", name="qdaif", node=QDEnvConfig)
     cs.store(group="env", name="qd_bio_env", node=QDBioEnvConfig)
     cs.store(group="env", name="qd_bio_utr", node=QDBioUTREnvConfig)
+    cs.store(group="env", name="qd_bio_utr_similarity_based", node=QDBioUTREnvConfig)
     cs.store(group="env", name="qd_bio_dna", node=QDBioTaskBasedEnvConfig)
     cs.store(group="qd", name="mapelites", node=MAPElitesConfig)
     cs.store(group="qd", name="cvtmapelites", node=CVTMAPElitesConfig)

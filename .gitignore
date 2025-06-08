@@ -104,7 +104,6 @@ celerybeat.pid
 # Environments
 .env
 .venv
-env/
 venv/
 ENV/
 env.bak/
@@ -133,7 +132,10 @@ dmypy.json
 .vscode
 checkpoints/
 logs/elm/
-logs/helix_mrna_fine_tune/debug/
+logs/test_*
+logs/tfbind*
+logs/debug*
+logs/helix*
 wandb/
 archive/
 data/
