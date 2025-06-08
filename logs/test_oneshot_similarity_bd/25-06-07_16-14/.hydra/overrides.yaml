@@ -1,0 +1,5 @@
+- env.size_of_refs_collection=10
+- qd.init_steps=1
+- qd.total_steps=100
+- output_dir=test_logs
+- wandb_group=test_suite_oneshot_similarity_bd

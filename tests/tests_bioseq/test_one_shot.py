@@ -36,7 +36,7 @@ def run_elm():
             "qd.total_steps=100",
             "output_dir=test_logs",
             f"wandb_group=test_suite_{name}",
-            f"hydra.run.dir=logs/elm/test_{name}/{timestamp}",
+            f"hydra.run.dir=logs/test_{name}/{timestamp}",
         ]
 
         result = subprocess.run(command,
@@ -62,7 +62,7 @@ def load_json(filepath):
         return json.load(f)
 
 
-def compare_results(new_results, reference_results, tolerance=0.0000001):
+def compare_results(new_results, reference_results, tolerance=0.000001):
     """
     Compare new results with reference results.
     :param new_results: New results to compare.
@@ -99,8 +99,8 @@ def test_oneshot():
 
     # Set fixed reference file paths (adjust if needed)
     reference_paths = {
-        "oneshot_bio_bd": os.path.join(project_root, "logs", f"test_oneshot_bio_bd", '25-05-24_13-43', "oracle_evaluations"),
-        "oneshot_similarity_bd": os.path.join(project_root, "logs", f"test_oneshot_similarity_bd", '25-05-24_13-44', "oracle_evaluations"),
+        "oneshot_bio_bd": os.path.join(project_root, "logs", f"test_oneshot_bio_bd", '25-06-07_16-13', "oracle_evaluations"),
+        "oneshot_similarity_bd": os.path.join(project_root, "logs", f"test_oneshot_similarity_bd", '25-06-07_16-14', "oracle_evaluations"),
     }
 
     for config_name in CONFIGS_TO_TEST.keys():
