@@ -1,0 +1,49 @@
+
+defaults:
+  - qd: cvtmapelites
+  - env: qd_bio_utr
+  - mutation_model: mutator_helix
+  - fitness_model: fitness_utr_ensemble
+  - _self_
+
+wandb_group: run_elm
+run_name: ""
+wandb_mode: online
+output_dir: logs/
+
+qd:
+  init_steps: 1
+  total_steps: 35000
+  history_length: 1
+  save_history: false
+  save_snapshot_interval: 5000
+  log_snapshot_dir: ""
+  seed: 42
+  save_np_rng_state: false
+  load_np_rng_state: false
+  crossover: false
+  crossover_parents: 2
+  eval_with_oracle: true
+  number_of_final_solutions: 128
+  n_niches: 2000
+  cvt_samples: 10000
+  init_from_offline_data: false
+env:
+  behavior_space:
+    - [0.0, 1.0]
+    - [0.0, 1.0]
+  sequence_length: 50
+  alphabet: [0, 1, 2, 3]
+  size_of_refs_collection: 2048 # Reduced from 16384 for faster training
+  offline_data_dir: design-bench-detached/design_bench_data/utr/oracle_data/original_v0_minmax_orig/sampled_offline_relabeled_data/sampled_data_fraction_1_3_seed_42
+  offline_data_x_file: x.npy
+  offline_data_y_file: y.npy
+  oracle_model_path: design-bench-detached/design_bench_data/utr/oracle_data/original_v0_minmax_orig
+  bd_type: similarity_based
+  normalize_bd: true
+  seed: 42
+  distance_normalization_constant: 14.3378899
+  task: UTR-ResNet-v0-CUSTOM
+  retrain_fitness_model: false
+  bd_min: [1.70510378e-03, 2.28953166e-05] # Min values for the similarity-based BD
+  bd_max:  [3.16341126, 3.22913836] # Max values for the similarity-based BD

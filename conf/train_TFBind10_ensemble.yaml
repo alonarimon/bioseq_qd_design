@@ -1,0 +1,39 @@
+hydra:
+  run:
+    dir: logs/tfbind10_retrain/${now:%y-%m-%d_%H-%M}
+
+defaults:
+  - qd: cvtmapelites
+  - env: qd_bio_dna
+  - mutation_model: random
+  - fitness_model: fitness_TFBind10_ensemble
+  - _self_
+
+wandb_group: tfbind10_retrain
+run_name: retrain_tfbind10
+wandb_mode: online
+
+qd:
+  init_steps: 1
+  total_steps: 10
+  history_length: 1
+  save_history: false
+  save_snapshot_interval: 5000
+  log_snapshot_dir: ""
+  seed: 42
+  save_np_rng_state: false
+  load_np_rng_state: false
+  crossover: false
+  crossover_parents: 2
+  eval_with_oracle: true
+  number_of_final_solutions: 128
+  n_niches: 2000
+  cvt_samples: 10000
+  init_from_offline_data: false
+
+mutation_model:
+  model_name: random
+  model_path: ""
+  alphabet: [0, 1, 2, 3]
+  mutation_length: 1
+  gen_max_len: 10

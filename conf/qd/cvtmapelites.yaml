@@ -1,0 +1,17 @@
+qd_name: cvtmapelites
+n_niches: 2000
+cvt_samples: 10000
+init_from_offline_data: true
+init_steps: 1
+total_steps: 30
+history_length: 1
+save_history: false
+save_snapshot_interval: 5000
+log_snapshot_dir: ""
+seed: 42
+save_np_rng_state: false
+load_np_rng_state: false
+crossover: false
+crossover_parents: 2
+eval_with_oracle: true
+number_of_final_solutions: 128

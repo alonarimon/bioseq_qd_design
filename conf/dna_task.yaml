@@ -1,0 +1,9 @@
+defaults:
+  - qd: cvtmapelites
+  - env: qd_bio_dna
+  - mutation_model: mutator_helix
+  - fitness_model: fitness_TFBind10_ensemble
+
+hydra:
+  run:
+    dir: logs/TFBind10/${now:%y-%m-%d_%H-%M}

@@ -64,7 +64,7 @@ class MutatorHelixConfig(ModelConfig):
     gen_max_len: int = 50
 
 @dataclass
-class FitnessBioEnsembleConfig(ModelConfig): #TODO:create one for utr and one for tfbind and use the same model type
+class FitnessBioEnsembleConfig(ModelConfig): 
     model_type: str = "bio_ensemble" 
     model_name: str = MISSING
     model_path: str = MISSING
@@ -81,17 +81,18 @@ class FitnessBioEnsembleConfig(ModelConfig): #TODO:create one for utr and one fo
     epochs: int = 50 # Number of epochs for retraining
 
 @dataclass
-class FitnessUTREnsembleConfig(FitnessBioEnsembleConfig): #TODO:create one for utr and one for tfbind and use the same model type
+class FitnessUTREnsembleConfig(FitnessBioEnsembleConfig): 
     model_name: str = "ensemble"
     model_path: str = os.path.join("src", "openelm", "environments", "bioseq", "utr_fitness_function", "utr_scoring_ensemble", "scoring_models")
     gen_max_len: int = 50 # Length of the sequence to be evaluated
 
 @dataclass
-class FitnessTFBind10EnsembletConfig(FitnessBioEnsembleConfig): #TODO:create one for utr and one for tfbind and use the same model type
+class FitnessTFBind10EnsembletConfig(FitnessBioEnsembleConfig): 
     model_name: str = "ensemble"
     model_path: str = os.path.join("src", "openelm", "environments", "bioseq", "tfbind_fitness_function", "tfbind_scoring_ensemble", "scoring_models", "2025-05-21_15-24-34") #TODO: without the date
     gen_max_len: int = 10 # Length of the sequence to be evaluated
     batch_size: int = 128
+    use_conservative: bool = True  # Whether to use conservative training
     
 
 @dataclass
@@ -157,7 +158,7 @@ class QDEnvConfig(EnvConfig):
     )
 
 @dataclass
-class QDBioEnvConfig(EnvConfig): # todo: split to qd_rna and qd_dna, this will be general
+class QDBioEnvConfig(EnvConfig):
     env_name: str = "qd_bio_env" # todo: naming
     behavior_space: list[list[float]] = field(
         default_factory=lambda: [
@@ -181,6 +182,7 @@ class QDBioTaskBasedEnvConfig(QDBioEnvConfig):
     distance_normalization_constant: float = -1  # Constant for distance normalization (for the similarity-based BD). -1 means constant will be automatically calculated from the offline data.
     task: str = 'TFBind10-Exact-v1'
     sequence_length: int = 10
+    retrain_fitness_model: bool = True
     
     
 @dataclass
@@ -193,6 +195,8 @@ class QDBioUTREnvConfig(QDBioEnvConfig):
     oracle_max_score: float = 0.7381 # Max score of the oracle model over UTR dataset
     oracle_min_score: float = 0.1885 # Min score of the oracle model over UTR dataset
     distance_normalization_constant: float = 14.3378899  # Constant for distance normalization (for the similarity-based BD). -1 means constant will be automatically calculated from the offline data.
+    bd_min: list[float] = field(default_factory=lambda: []) # Min values for the BD, empty list means the min values will be calculated from the offline data
+    bd_max: list[float] = field(default_factory=lambda:  []) # Max values for the BD, empty list means the max values will be calculated from the offline data
     task: str = 'UTR-ResNet-v0-CUSTOM'
     sequence_length: int = 50
     
@@ -226,7 +230,6 @@ class ELMConfig(BaseConfig):
             }
         }
     )
-    defaults: list[Any] = field(default_factory=lambda: defaults_elm)
     mutation_model: Any = MISSING #TODO: move to env
     fitness_model: Any = MISSING #TODO: move to env
     qd: Any = MISSING
@@ -262,6 +265,7 @@ class OneShotBioELMConfig(ELMConfig):
         crossover_parents=2,
         eval_with_oracle=True,
         number_of_final_solutions=128,
+        init_from_offline_data=False,
     ))
     env: Any = field(default_factory=lambda: QDBioUTREnvConfig(
         env_name="qd_bio_utr",
@@ -335,6 +339,14 @@ def register_configstore() -> ConfigStore:
     cs.store(name="elmconfig", node=ELMConfig)
     cs.store(name="oneshot_bio_elmconfig", node=OneShotBioELMConfig)
     cs.store(name="oneshot_similarity_bd_elmconfig", node=OneShotSimilarityBDELMConfig)
+    
+    # from yaml files
+    cs.store(name="train_TFBind10_ensemble", node=ELMConfig)
+    cs.store(name="utr_task", node=ELMConfig)
+    cs.store(name="utr_task_similarity_based", node=ELMConfig)
+    cs.store(name="dna_task", node=ELMConfig)
+    cs.store(name="debug", node=ELMConfig)
+
 
     return cs
 

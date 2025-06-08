@@ -1,0 +1,14 @@
+model_type: bio_ensemble
+model_name: ensemble
+model_path: src/openelm/environments/bioseq/tfbind_fitness_function/tfbind_scoring_ensemble/scoring_models
+gen_max_len: 10
+ensemble_size: 4
+beta: 2.0
+alphabet_size: 4
+batch_size: 128
+load_existing_models: true
+
+# Retraining params
+validation_fraction: 0.1
+use_conservative: true
+epochs: 50

@@ -35,7 +35,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
     ):
         """
         Args:
-            config (QDEnvConfig): Configuration for the environment.
+            config (QDBioEnvConfig): Configuration for the environment.
             mutation_model (MutationModel): Mutation model for mutating sequences.
         """
         super().__init__() #todo: check if this is needed
@@ -116,9 +116,15 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         self.bd_min = 0
         self.bd_max = 1
         if self.config.normalize_bd:
-            subsample = self.config.bd_type == "similarity_based" # we subsample the offline data only for the similarity based bd, because it is expensive
-            self.bd_min, self.bd_max = self.get_training_bd_stats(subsample=subsample)
-        logger.info(f"Behavioral descriptor min: {self.bd_min}, max: {self.bd_max}")
+            if len(self.config.bd_min) > 0 and len(self.config.bd_max) > 0:
+                # If bd_min and bd_max are provided in the config, use them
+                self.bd_min = np.array(self.config.bd_min)
+                self.bd_max = np.array(self.config.bd_max)
+                logger.info(f"Using pre-defined behavioral descriptor min: {self.bd_min}, max: {self.bd_max}")
+            else:
+                subsample = self.config.bd_type == "similarity_based" # we subsample the offline data only for the similarity based bd, because it is expensive
+                self.bd_min, self.bd_max = self.get_training_bd_stats(subsample=subsample)
+                logger.info(f"Behavioral descriptor min: {self.bd_min}, max: {self.bd_max}")
 
 
         if self.batch_size > self.fitness_function.config.batch_size:
@@ -187,6 +193,7 @@ class BioSeqEvolution(BaseEnvironment[BioSeqGenotype]):
         offline_data_x_gen = self.offline_data_x_gen
         if subsample:
             # Subsample the offline data
+            logger.info(f"Subsampling the offline data to {self.config.size_of_refs_collection} genotypes, to calculate the behavioral descriptor statistics.")
             random_indexes = self.rng.choice(self.offline_data_x.shape[0], size=self.config.size_of_refs_collection, replace=False)
             offline_data_x_gen = self.offline_data_x_gen[random_indexes]
 

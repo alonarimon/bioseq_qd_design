@@ -1,0 +1,10 @@
+model_name: helix
+model_path: ""
+tokenizer_path: ""
+mutation_length: 5
+temp: 0.6
+top_k: 1
+logits_threshold: 0.8
+top_p: 0.0
+batch_size: 128
+gen_max_len: 50
